@@ -54,6 +54,18 @@ class Database:
 
         await self.execute(sql, execute=True)
 
+
+    async def create_table_user_playlists(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS user_playlists (
+        playlist_id BIGINT PRIMARY KEY,
+        user_telegram_id BIGINT NOT NULL,
+        playlist_name VARCHAR(50) NOT NULL,
+        playlist_caption VARCHAR(255) NOT NULL
+        );
+        """
+        await self.execute(sql, execute=True)
+
     @staticmethod
     def format_args(sql, parameters: dict):
         sql += " AND ".join([
@@ -70,6 +82,12 @@ class Database:
         sql = "SELECT * FROM Users WHERE "
         sql, parameters = self.format_args(sql, parameters=kwargs)
         return await self.execute(sql, *parameters, fetchrow=True)
+
+    async def select_user_playlists(self, telegram_id, limit, offset):
+        sql = """SELECT * FROM user_playlists 
+        WHERE user_telegram_id=$1
+        LIMIT $2 OFFSET $3;"""
+        return await self.execute(sql, telegram_id, limit, offset, fetch=True)
 
     async def count_users(self):
         sql = "SELECT COUNT(*) FROM Users"
@@ -100,3 +118,6 @@ class Database:
 
     async def drop_questions(self):
         await self.execute("DROP TABLE IF EXISTS questions", execute=True)
+
+    async def drop_user_playlists(self):
+        await self.execute("DROP TABLE IF EXISTS user_playlists", execute=True)
