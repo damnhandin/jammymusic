@@ -12,12 +12,26 @@ from tgbot.handlers.echo import register_echo
 from tgbot.handlers.user import register_user
 from tgbot.middlewares.environment import EnvironmentMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
+from tgbot.models.db_utils import Database
 
 logger = logging.getLogger(__name__)
 
 
-def register_all_middlewares(dp, config):
-    dp.setup_middleware(EnvironmentMiddleware(config=config))
+async def init_db(db: Database):
+    await db.drop_users()
+
+    await db.create_table_users()
+
+
+async def setup_database(db: Database):
+    logging.info("Создаём подключение к базе данных")
+    await db.create()
+    await init_db(db)
+    logging.info("Готово")
+
+
+def register_all_middlewares(dp, config, db):
+    dp.setup_middleware(EnvironmentMiddleware(config=config, db=db))
     dp.setup_middleware(ThrottlingMiddleware())
 
 
@@ -43,12 +57,14 @@ async def main():
     storage = RedisStorage2() if config.tg_bot.use_redis else MemoryStorage()
     bot = Bot(token=config.tg_bot.token, parse_mode='HTML')
     dp = Dispatcher(bot, storage=storage)
-
+    db = Database()
     bot['config'] = config
+    bot['db'] = db
 
-    register_all_middlewares(dp, config)
+    register_all_middlewares(dp, config, db)
     register_all_filters(dp)
     register_all_handlers(dp)
+    await setup_database(db)
 
     # start
     try:
