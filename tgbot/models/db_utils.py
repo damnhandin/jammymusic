@@ -85,6 +85,10 @@ class Database:
         ])
         return sql, tuple(parameters.values())
 
+    async def select_video_by_id(self, video_id):
+        sql = "SELECT * FROM videos WHERE video_id=$1;"
+        return await self.execute(sql, video_id, fetchrow=True)
+
     async def select_all_users(self):
         sql = "SELECT * FROM users"
         return await self.execute(sql, fetch=True)

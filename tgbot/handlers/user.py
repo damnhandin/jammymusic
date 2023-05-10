@@ -5,7 +5,8 @@ import asyncio
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart, Text
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile
+from pytube import YouTube, Stream
 from youtubesearchpython import SearchVideos
 
 from tgbot.config import Config
@@ -114,6 +115,36 @@ async def search_music_func(mes: types.Message, db: Database):
     await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
 
 
+async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Database):
+    video = await db.select_video_by_id(callback_data["video_id"])
+    if not video:
+        await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
+        return
+    yt_video = YouTube(video["link"])
+    if not yt_video:
+        await cq.message.answer('Произошла ошибка!')
+        return
+    # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
+    # и выбрать самый большой, но в то же время подходящий файл
+    audio: Stream = yt_video.streams.filter(type='audio').last()
+    if audio.filesize > 52428800:
+        audio: Stream = yt_video.streams.filter(type='audio').first()
+        if audio.filesize > 52428800:
+            await cq.answer('Размер аудио слишком большой, невозможно отправить')
+            return
+
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("Добавить в мои плейлисты",
+                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
+    ])
+    try:
+        await cq.message.delete()
+    except Exception as e:
+        pass
+    await cq.message.answer_audio(InputFile(audio.download('download_cash')), title=audio.title,
+                                  reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+
+
 async def create_playlist(cq: types.CallbackQuery):
     await JammyMusicStates.get_playlist_title.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
@@ -154,4 +185,5 @@ def register_user(dp: Dispatcher):
                                        action_callback.filter(cur_action="cancel_to_start_menu"),
                                        state="*")
     dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)
+    dp.register_callback_query_handler(user_choose_video_cq, video_callback.filter())
 
