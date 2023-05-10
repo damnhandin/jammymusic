@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 async def init_db(db: Database):
     await db.drop_users()
     await db.drop_user_playlists()
+    await db.drop_videos()
 
     await db.create_table_users()
     await db.create_table_user_playlists()
-
+    await db.create_table_videos()
 
 async def setup_database(db: Database):
     logging.info("Создаём подключение к базе данных")

@@ -2,7 +2,7 @@ from typing import Union
 
 
 import asyncpg
-from asyncpg import Pool, Connection
+from asyncpg import Pool, Connection, UniqueViolationError
 
 from tgbot.config import load_config
 
@@ -43,7 +43,7 @@ class Database:
 
     async def create_table_users(self):
         sql = """
-        CREATE TABLE IF NOT EXISTS Users(
+        CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
         full_name VARCHAR(128) NOT NULL,
         username VARCHAR(36) NULL,
@@ -54,13 +54,24 @@ class Database:
 
         await self.execute(sql, execute=True)
 
+    async def create_table_videos(self):
+        # self.id, self.link, self.title, self.channel, self.duration
+        sql = """
+            CREATE TABLE IF NOT EXISTS videos(
+            p_id SERIAL PRIMARY KEY,
+            video_id VARCHAR(50) UNIQUE NOT NULL,
+            link VARCHAR(100) NOT NULL,
+            title VARCHAR(300) NOT NULL
+            );
+        """
+        await self.execute(sql, execute=True)
 
     async def create_table_user_playlists(self):
         sql = """
         CREATE TABLE IF NOT EXISTS user_playlists (
         playlist_id BIGINT PRIMARY KEY,
         user_telegram_id BIGINT NOT NULL,
-        playlist_name VARCHAR(50) NOT NULL,
+        playlist_title VARCHAR(50) NOT NULL,
         playlist_caption VARCHAR(255) NOT NULL
         );
         """
@@ -75,11 +86,11 @@ class Database:
         return sql, tuple(parameters.values())
 
     async def select_all_users(self):
-        sql = "SELECT * FROM Users"
+        sql = "SELECT * FROM users"
         return await self.execute(sql, fetch=True)
 
     async def select_user(self, **kwargs):
-        sql = "SELECT * FROM Users WHERE "
+        sql = "SELECT * FROM users WHERE "
         sql, parameters = self.format_args(sql, parameters=kwargs)
         return await self.execute(sql, *parameters, fetchrow=True)
 
@@ -90,8 +101,17 @@ class Database:
         return await self.execute(sql, telegram_id, limit, offset, fetch=True)
 
     async def count_users(self):
-        sql = "SELECT COUNT(*) FROM Users"
+        sql = "SELECT COUNT(*) FROM users"
         return await self.execute(sql, fetchval=True)
+
+    async def add_video(self, video_id, link, title):
+        sql = """
+        INSERT INTO videos (video_id, link, title) VALUES ($1, $2, $3);
+        """
+        try:
+            await self.execute(sql, video_id, link, title, execute=True)
+        except UniqueViolationError:
+            pass
 
     async def add_user(self, full_name, username, telegram_id, registration_date):
         sql = "INSERT INTO users (full_name, username, telegram_id, registration_date) " \
@@ -107,11 +127,11 @@ class Database:
         await self.execute(sql, *data.values(), execute=True)
 
     async def update_user_username(self, username, telegram_id):
-        sql = "UPDATE Users SET username=$1 WHERE telegram_id=$2"
+        sql = "UPDATE users SET username=$1 WHERE telegram_id=$2"
         return await self.execute(sql, username, telegram_id, execute=True)
 
     async def delete_users(self):
-        await self.execute("DELETE FROM Users WHERE TRUE", execute=True)
+        await self.execute("DELETE FROM users WHERE TRUE", execute=True)
 
     async def drop_users(self):
         await self.execute("DROP TABLE IF EXISTS users", execute=True)
@@ -121,3 +141,6 @@ class Database:
 
     async def drop_user_playlists(self):
         await self.execute("DROP TABLE IF EXISTS user_playlists", execute=True)
+
+    async def drop_videos(self):
+        await self.execute("DROP TABLE IF EXISTS videos", execute=True)

@@ -20,6 +20,7 @@ class TgBot:
 
 @dataclass
 class Miscellaneous:
+    playlist_title_length_limit: int = 50
     other_params: str = None
 
 
@@ -46,5 +47,7 @@ def load_config(path: str = None):
             user=env.str('DB_USER'),
             database=env.str('DB_NAME')
         ),
-        misc=Miscellaneous()
+        misc=Miscellaneous(
+            playlist_title_length_limit=50
+        )
     )
