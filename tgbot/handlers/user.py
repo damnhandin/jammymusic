@@ -45,9 +45,12 @@ class PlaylistPaginator:
         self.edit_mode = edit_mode
 
     async def create_playlist_keyboard(self, db: Database, add_track_mode=False):
-        print(add_track_mode)
         playlists = await db.select_user_playlists(self.telegram_id, self.limit_per_page,
-                                                        (self.cur_page - 1) * self.limit_per_page)
+                                                   (self.cur_page - 1) * self.limit_per_page)
+        print(self.limit_per_page)
+        print((self.cur_page - 1) * self.limit_per_page)
+        print(self.cur_page)
+        print(playlists)
         playlists_keyboard = await self.add_playlists_buttons(playlist_callback, playlists)
         await self.add_navigation_buttons(playlists_keyboard)
         await self.add_interaction_buttons(playlists_keyboard, add_track_mode=add_track_mode)
@@ -166,7 +169,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
 
 
 async def add_to_playlist(cq: types.CallbackQuery, state, db):
-    playlist_paginator = await get_paginator_from_state(cq.message.from_user.id, state, PlaylistPaginator)
+    playlist_paginator = await get_paginator_from_state(cq.from_user.id, state, PlaylistPaginator)
     await state.update_data(previous_text=cq.message.caption)
     await state.update_data(previous_reply_markup=cq.message.reply_markup)
     reply_markup = await playlist_paginator.create_playlist_keyboard(db, add_track_mode=bool(cq.message.audio))
@@ -261,7 +264,6 @@ async def cancel_creation_playlist(cq, state, db):
 async def cancel_playlist_func(cq: types.CallbackQuery, db, state):
     if cq.message.audio:
         async with state.proxy() as data:
-            print(data)
             previous_text = data.get("previous_text")
             previous_reply_markup = data.get("previous_reply_markup")
             if previous_text:
