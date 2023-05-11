@@ -69,13 +69,28 @@ class Database:
     async def create_table_user_playlists(self):
         sql = """
         CREATE TABLE IF NOT EXISTS user_playlists (
-        playlist_id BIGINT PRIMARY KEY,
+        playlist_id SERIAL PRIMARY KEY,
         user_telegram_id BIGINT NOT NULL,
-        playlist_title VARCHAR(50) NOT NULL,
-        playlist_caption VARCHAR(255) NOT NULL
+        playlist_title VARCHAR(50) NOT NULL
         );
         """
         await self.execute(sql, execute=True)
+    async def create_table_tracks(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS tracks (
+            track_id SERIAL PRIMARY KEY,
+            file_id VARCHAR(100) NOT NULL,
+        );
+        """
+        await self.execute(sql, execute=True)
+    async def create_table_track_playlist(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS track_playlist (
+        playlist_id INT REFERENCES user_playlists(playlist_id) ON DELETE CASCADE
+        track_id INT REFERENCES 
+        );
+        """
+
 
     @staticmethod
     def format_args(sql, parameters: dict):
@@ -108,6 +123,10 @@ class Database:
         sql = "SELECT COUNT(*) FROM users"
         return await self.execute(sql, fetchval=True)
 
+    async def add_new_playlist(self, user_telegram_id, playlist_title):
+        sql = "INSERT INTO user_playlists (user_telegram_id, playlist_title) VALUES ($1, $2);"
+        await self.execute(sql, user_telegram_id, playlist_title, execute=True)
+
     async def add_video(self, video_id, link, title):
         sql = """
         INSERT INTO videos (video_id, link, title) VALUES ($1, $2, $3);
@@ -116,6 +135,10 @@ class Database:
             await self.execute(sql, video_id, link, title, execute=True)
         except UniqueViolationError:
             pass
+
+    async def add_audio(self, audio_id):
+        sql = "INSERT INTO tracks (file_id) VALUES ($1);"
+        await self.execute(sql, audio_id, execute=True)
 
     async def add_user(self, full_name, username, telegram_id, registration_date):
         sql = "INSERT INTO users (full_name, username, telegram_id, registration_date) " \
