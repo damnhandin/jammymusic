@@ -5,6 +5,7 @@ import asyncpg
 from asyncpg import Pool, Connection, UniqueViolationError
 
 from tgbot.config import load_config
+from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist
 
 config = load_config(".env")
 
@@ -75,6 +76,7 @@ class Database:
         );
         """
         await self.execute(sql, execute=True)
+
     async def create_table_tracks(self):
         sql = """
         CREATE TABLE IF NOT EXISTS tracks (
@@ -83,13 +85,16 @@ class Database:
         );
         """
         await self.execute(sql, execute=True)
+
+
     async def create_table_track_playlist(self):
         sql = """
         CREATE TABLE IF NOT EXISTS track_playlist (
-        playlist_id INT REFERENCES user_playlists(playlist_id) ON DELETE CASCADE
-        track_id INT REFERENCES 
+        playlist_id INT REFERENCES user_playlists(playlist_id),
+        track_id VARCHAR(100) NOT NULL 
         );
         """
+        await self.execute(sql, execute=True)
 
 
     @staticmethod
@@ -119,9 +124,37 @@ class Database:
         LIMIT $2 OFFSET $3;"""
         return await self.execute(sql, telegram_id, limit, offset, fetch=True)
 
+    async def select_user_tracks_from_playlist(self, user_telegram_id, playlist_id):
+        if type(playlist_id) is not int:
+            playlist_id = int(playlist_id)
+        sql = "SELECT * FROM user_playlists WHERE user_telegram_id=$1 AND playlist_id=$2;"
+        result = await self.execute(sql, user_telegram_id, playlist_id, fetchrow=True)
+        if not result:
+            raise PlaylistNotFound
+        sql = "SELECT track_id FROM track_playlist WHERE playlist_id=$1;"
+        return await self.execute(sql, playlist_id, fetch=True)
+
+    async def add_track_into_playlist(self, user_telegram_id, track_id, playlist_id):
+        if type(playlist_id) is not int:
+            playlist_id = int(playlist_id)
+        sql = "SELECT * FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2;"
+        result = await self.execute(sql, playlist_id, user_telegram_id, fetchrow=True)
+        if not result:
+            raise PlaylistNotFound
+        sql = "SELECT COUNT(*) FROM track_playlist WHERE playlist_id=$1;"
+        result = await self.execute(sql, playlist_id, fetchval=True)
+        if result >= 100:
+            raise LimitTracksInPlaylist
+        sql = "INSERT INTO track_playlist (playlist_id, track_id) VALUES ($1, $2)"
+        await self.execute(sql, playlist_id, track_id, execute=True)
+
     async def count_users(self):
         sql = "SELECT COUNT(*) FROM users"
         return await self.execute(sql, fetchval=True)
+
+    async def count_of_user_playlists(self, telegram_id):
+        sql = "SELECT COUNT(*) FROM user_playlists WHERE user_telegram_id=$1;"
+        return await self.execute(sql, telegram_id, fetchval=True)
 
     async def add_new_playlist(self, user_telegram_id, playlist_title):
         sql = "INSERT INTO user_playlists (user_telegram_id, playlist_title) VALUES ($1, $2);"
@@ -150,7 +183,6 @@ class Database:
         sql += ", ".join(
             [f"{item} = ${num}" for num, item in enumerate(data.keys(),
                                                            start=1)])
-        print(sql)
         await self.execute(sql, *data.values(), execute=True)
 
     async def update_user_username(self, username, telegram_id):
@@ -171,3 +203,6 @@ class Database:
 
     async def drop_videos(self):
         await self.execute("DROP TABLE IF EXISTS videos", execute=True)
+
+    async def drop_track_playlist(self):
+        await self.execute("DROP TABLE IF EXISTS track_playlist", execute=True)

@@ -1,19 +1,26 @@
 import concurrent.futures
+import io
 from json import loads
 
 import asyncio
+from math import ceil
+
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart, Text
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
+    InputMediaAudio
 from aiogram.utils.callback_data import CallbackData
+from aiogram.utils.exceptions import MessageNotModified
 from pytube import YouTube, Stream, StreamQuery
+from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import SearchVideos
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback
 from tgbot.keyboards.inline import confirm_start_keyboard
 from tgbot.keyboards.reply import start_keyboard
+from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.db_utils import Database
 
@@ -44,12 +51,13 @@ class PlaylistPaginator:
         self.limit_per_page = limit_per_page
         self.edit_mode = edit_mode
 
-    async def create_playlist_keyboard(self, db: Database, add_track_mode=False):
-        playlists = await db.select_user_playlists(self.telegram_id, self.limit_per_page,
-                                                   (self.cur_page - 1) * self.limit_per_page)
+    async def create_playlist_keyboard(self, db: Database, add_track_mode):
         print(self.limit_per_page)
         print((self.cur_page - 1) * self.limit_per_page)
         print(self.cur_page)
+        playlists = await db.select_user_playlists(self.telegram_id, self.limit_per_page,
+                                                   (self.cur_page - 1) * self.limit_per_page)
+
         print(playlists)
         playlists_keyboard = await self.add_playlists_buttons(playlist_callback, playlists)
         await self.add_navigation_buttons(playlists_keyboard)
@@ -90,6 +98,22 @@ class PlaylistPaginator:
                                               )))
         return keyboard
 
+    async def next_page_navigation(self, db, count_of_pages, add_track_mode=False):
+        if self.cur_page + 1 > count_of_pages:
+            self.cur_page = 1
+        else:
+            self.cur_page += 1
+        keyboard = await self.create_playlist_keyboard(db, add_track_mode)
+        return keyboard
+
+    async def prev_page_navigation(self, db, count_of_pages, add_track_mode=False):
+        if self.cur_page - 1 < 1:
+            self.cur_page = count_of_pages
+        else:
+            self.cur_page -= 1
+        keyboard = await self.create_playlist_keyboard(db, add_track_mode)
+        return keyboard
+
 
 async def my_playlists(message: types.Message, db: Database, state: FSMContext):
     playlist_paginator = await get_paginator_from_state(message.from_user.id, state, PlaylistPaginator)
@@ -108,6 +132,7 @@ async def run_blocking_io(func, *args):
             pool, func, *args
         )
     return result
+
 
 async def search_music_func(mes: types.Message, db: Database):
     try:
@@ -147,7 +172,11 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
         return
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
-    audio_stream: StreamQuery = yt_video.streams.filter(type='audio')
+    try:
+        audio_stream: StreamQuery = yt_video.streams.filter(type='audio')
+    except AgeRestrictedError:
+        await cq.message.answer("Данная музыка ограничена по возрасту")
+        return
     if audio_stream.last().filesize > 52428800:
         audio: Stream = audio_stream.first()
         if audio.filesize > 52428800:
@@ -160,7 +189,14 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
         [InlineKeyboardButton("Добавить в мои плейлисты",
                               callback_data=action_callback.new(cur_action="add_to_playlist"))]
     ])
-    await cq.message.answer_audio(InputFile(audio.download('download_cache')), title=audio.title,
+    # Через буфер
+    audio_file = io.BytesIO()
+    await run_blocking_io(audio.stream_to_buffer, audio_file)
+    # audio.stream_to_buffer(audio_file)
+    audio_file.seek(0)
+    # Через скачивание файла в папку
+    # audio.download('download_cache')
+    await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
     try:
         await cq.message.delete()
@@ -222,11 +258,11 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
         pass
 
 
-async def get_paginator_from_state(tg_id, state, paginator_class=PlaylistPaginator):
+async def get_paginator_from_state(tg_id, state: FSMContext, paginator_class=PlaylistPaginator):
     playlist_paginator = (await state.get_data()).get("playlist_paginator")
     if playlist_paginator is None:
         playlist_paginator = paginator_class(tg_id)
-
+    await state.update_data(playlist_paginator=playlist_paginator)
     return playlist_paginator
 
 
@@ -272,8 +308,63 @@ async def cancel_playlist_func(cq: types.CallbackQuery, db, state):
                 await cq.message.edit_reply_markup(reply_markup=previous_reply_markup)
     else:
         paginator: PlaylistPaginator = await get_paginator_from_state(cq.from_user.id, state)
-        reply_markup = await paginator.create_playlist_keyboard(db)
+        reply_markup = await paginator.create_playlist_keyboard(db, bool(cq.message.audio))
         await cq.message.edit_text("<b>Ваши плейлисты</b>", reply_markup=reply_markup)
+
+
+async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
+    if cq.message.audio:
+        try:
+            await db.add_track_into_playlist(cq.from_user.id, cq.message.audio.file_id,
+                                             callback_data["playlist_id"])
+        except PlaylistNotFound:
+            await cq.answer("Плейлист не был найден")
+        except LimitTracksInPlaylist:
+            await cq.answer("Достигнут лимит на количество треков в одном плейлисте")
+        else:
+            reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton("Добавить в мои плейлисты",
+                                      callback_data=action_callback.new(cur_action="add_to_playlist"))]
+            ])
+            try:
+                await cq.message.edit_caption("Трек был успешно добавлен\nБольше музыки на @jammy_music_bot",
+                                              reply_markup=reply_markup)
+            except:
+                pass
+    else:
+        try:
+            result = await db.select_user_tracks_from_playlist(cq.from_user.id, callback_data["playlist_id"])
+        except PlaylistNotFound:
+            await cq.answer("Плейлист не был найден")
+        else:
+            counter = 0
+            media_group = MediaGroup()
+            for track in result:
+                counter += 1
+                media_group.attach(InputMediaAudio(media=track["track_id"]))
+                if counter == 10:
+                    await cq.message.answer_media_group(media_group)
+                    counter = 0
+                    media_group = MediaGroup()
+            else:
+                if counter != 0:
+                    await cq.message.answer_media_group(media_group)
+
+
+async def page_navigation(cq, callback_data, state, db: Database):
+    paginator = await get_paginator_from_state(cq.from_user.id, state)
+    count_of_pages = ceil((await db.count_of_user_playlists(cq.from_user.id)) / paginator.limit_per_page)
+    if count_of_pages == 0:
+        count_of_pages = 1
+    if callback_data["cur_action"] == "prev_page":
+        reply_markup = await paginator.prev_page_navigation(db, count_of_pages, add_track_mode=bool(cq.message.audio))
+    else:
+        reply_markup = await paginator.next_page_navigation(db, count_of_pages, add_track_mode=bool(cq.message.audio))
+    try:
+        await cq.message.edit_reply_markup(reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
+    await cq.answer()
 
 
 def register_user(dp: Dispatcher):
@@ -298,3 +389,5 @@ def register_user(dp: Dispatcher):
     dp.register_callback_query_handler(confirm_creation_playlist,
                                        action_callback.filter(cur_action="confirm_creation"))
     dp.register_callback_query_handler(cancel_playlist_func, action_callback.filter(cur_action="cancel_playlist"))
+    dp.register_callback_query_handler(choose_playlist, playlist_callback.filter())
+    dp.register_callback_query_handler(page_navigation, action_callback.filter(cur_action=["prev_page", "next_page"]))
