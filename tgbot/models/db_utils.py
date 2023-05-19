@@ -159,6 +159,10 @@ class Database:
         sql = "SELECT COUNT(*) FROM users"
         return await self.execute(sql, fetchval=True)
 
+    async def count_song_in_user_playlist(self, playlist_id):
+        return await self.execute("SELECT COUNT(*) FROM track_playlist WHERE playlist_id=$1;", playlist_id,
+                                  fetchval=True)
+
     async def count_of_user_playlists(self, telegram_id):
         sql = "SELECT COUNT(*) FROM user_playlists WHERE user_telegram_id=$1;"
         return await self.execute(sql, telegram_id, fetchval=True)
@@ -210,6 +214,27 @@ class Database:
                                     execute=True)
         if int((result.split())[1]) != 1:
             raise PlaylistNotFound
+
+    async def delete_song_from_user_playlist(self, user_telegram_id, playlist_id, song_number):
+        result = await self.execute("SELECT * FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2",
+                                    playlist_id, user_telegram_id, fetchrow=True)
+        if not result:
+            raise PlaylistNotFound
+        # await self.execute("""
+        # DELETE FROM track_playlist AS tp INNER JOIN (
+        # SELECT track_id FROM track_playlist LIMIT 1 OFFSET $2) AS tp2
+        # ON tp.track_id = tp2.track_id
+        # WHERE tp.playlist_id=$1 AND tp.track_id = tp2.track_id;""",
+        #                    playlist_id, song_number - 1, execute=True)
+        await self.execute("""
+        DELETE FROM track_playlist
+        WHERE playlist_id = $1 AND track_id = (
+            SELECT track_id
+            FROM track_playlist
+            OFFSET $2
+            LIMIT 1);""",
+                           playlist_id, song_number - 1, execute=True)
+
 
 
     async def delete_users(self):

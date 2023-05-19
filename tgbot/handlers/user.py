@@ -19,7 +19,7 @@ from tgbot.keyboards.callback_datas import action_callback, playlist_callback, v
     playlist_action, playlist_navg_callback
 from tgbot.keyboards.inline import confirm_start_keyboard
 from tgbot.keyboards.reply import start_keyboard
-from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist
+from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
@@ -90,6 +90,7 @@ async def search_music_func(mes: types.Message, db: Database):
 
 
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Database):
+    await cq.answer("Ищем информацию по данному запросу!")
     video = await db.select_video_by_id(callback_data["video_id"])
     if not video:
         await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
@@ -464,10 +465,6 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
     await state.reset_data()
 
 
-async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db):
-    pass
-
-
 async def delete_playlist(cq: types.CallbackQuery, callback_data, state, db):
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("✅",
@@ -504,11 +501,19 @@ async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, p
     await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
 
 
-async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, state, db: Database):
+async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg, state, db: Database):
     await state.reset_state()
     if cq.message.caption:
         return
     playlist = await db.select_user_playlist(callback_data["playlist_id"])
+    if not playlist:
+        reply_markup = await playlist_pg.create_playlist_keyboard(
+            cq.from_user.id, db, cur_page=int(callback_data["cur_page"]),
+            cur_mode="edit_mode",
+            edit_mode=True,
+            check_cur_page=True)
+        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+        return
     msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id, callback_data["playlist_id"],
                                                               db, cur_page=callback_data["cur_page"])
     await cq.message.edit_text(msg_text, reply_markup=reply_markup)
@@ -517,6 +522,70 @@ async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, state, db: D
 async def get_unknown_content_to_add_to_playlist(message):
     await message.answer("Мы получили от вас неизвестный файл, либо текст, вам необходимо отправить только аудио файл, "
                          "иначе воспользуйтесь поиском")
+
+async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
+    count_of_songs = await db.count_song_in_user_playlist(int(callback_data["playlist_id"]))
+    if count_of_songs == 0:
+        await cq.answer("У вас нет песен в плейлисте!")
+        return
+    await JammyMusicStates.get_number_of_song_to_delete.set()
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("❌Отмена",
+                              callback_data=playlist_action.new(
+                                  playlist_id=callback_data["playlist_id"],
+                                  cur_action="back_to_edit_menu",
+                                  cur_page=callback_data["cur_page"]
+                              ))]
+    ])
+    msg_delete_reply_markup = await cq.message.edit_text(
+        "<b>Введите номер трека, который хотите удалить:</b>", reply_markup=reply_markup)
+    cur_page = callback_data["cur_page"]
+    playlist_id = callback_data["playlist_id"]
+    await state.update_data(msg_delete_reply_markup=msg_delete_reply_markup,
+                            playlist_id=playlist_id,
+                            cur_page=cur_page)
+
+
+async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, state):
+    try:
+        number_song = int(message.text)
+        data = await state.get_data()
+        count_of_songs = await db.count_song_in_user_playlist(int(data["playlist_id"]))
+        if number_song < 1 or number_song > count_of_songs:
+            raise WrongSongNumber
+
+    except ValueError:
+        await message.answer("Пожалуйста введите номер песни, которую хотите удалить")
+        return
+    except WrongSongNumber:
+        await message.answer("Вы вышли за диапазон песен, повторите попытку")
+        return
+    else:
+        await state.reset_state()
+        print(type(data["playlist_id"]))
+        try:
+            await db.delete_song_from_user_playlist(message.from_user.id, int(data["playlist_id"]), number_song)
+        except PlaylistNotFound:
+            await message.answer("Произошла ошибка, плейлист не был найден")
+            return
+        else:
+            await data["msg_delete_reply_markup"].delete()
+            playlist = await db.select_user_playlist(int(data["playlist_id"]))
+            if not playlist:
+                await playlist_pg.create_playlist_keyboard(message.from_user.id, db,
+                                                           cur_page=data["cur_page"],
+                                                           cur_mode="edit_mode",
+                                                           edit_mode=True,
+                                                           check_cur_page=True)
+                return
+            msg_text, reply_markup = await generate_edit_playlist_msg(playlist, message.from_user.id,
+                                                                      data["playlist_id"],
+                                                                      db, cur_page=data["cur_page"])
+            await message.answer(msg_text, reply_markup=reply_markup)
+
+
+async def get_unknown_content_to_delete_song_func(message):
+    await message.answer("Похоже мы получили от вас неизвестный файл, вместо номера песни, которую хотите удалить.")
 
 
 def register_user(dp: Dispatcher):
@@ -575,3 +644,7 @@ def register_user(dp: Dispatcher):
                                 state=JammyMusicStates.add_music_to_playlist)
     dp.register_callback_query_handler(confirm_delete_playlist, playlist_action.filter(
         cur_action="confirm_delete_playlist"))
+    dp.register_message_handler(get_number_of_song_to_delete_func,
+                                content_types=ContentType.TEXT, state=JammyMusicStates.get_number_of_song_to_delete)
+    dp.register_message_handler(get_unknown_content_to_delete_song_func,
+                                content_types=ContentType.ANY, state=JammyMusicStates.get_number_of_song_to_delete)
