@@ -428,23 +428,72 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
         await cq.message.answer(msg_text, reply_markup=reply_markup)
 
 
-async def add_music_to_playlist(cq: types.CallbackQuery, state, db):
-    # await JammyMusicStates.add_music_to_playlist.set()
+async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, db):
+    await JammyMusicStates.add_music_to_playlist.set()
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("❌Отменить", callback_data=playlist_action.new(
+            playlist_id=callback_data["playlist_id"],
+            cur_action="back_to_edit_menu",
+            cur_page=callback_data["cur_page"]))]
+    ])
+    msg_to_delete = await cq.message.edit_text("<b>Пришлите песню для добавления:</b>", reply_markup=reply_markup)
+    await state.update_data(msg_to_delete=msg_to_delete, playlist_id=callback_data["playlist_id"])
     # reply_markup = InlineKeyboardMarkup(inline_keyboard=[
     #     [InlineKeyboardButton("❌Отменить",
     #                           callback_data=playlist_action.new(playlist_id=,
     #                                                             cur_action="back_to_edit_menu"))]
     # ])
     # await cq.message.edit_text("<b>Пришлите песню для добавления:</b>")
+
+async def delete_format_name_from_filename(filename: str):
+    index = filename.find(".mp3")
+    return filename[:index]
+
+async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext, db: Database):
+    await state.reset_state(with_data=False)
+    data = await state.get_data()
+    playlist_id = int(data["playlist_id"])
+    msg_to_delete = data["msg_to_delete"]
+    audio_title = await delete_format_name_from_filename(message.audio.file_name)
+    await db.add_track_into_playlist(message.from_user.id, message.audio.file_id, audio_title, playlist_id)
+    try:
+        await msg_to_delete.delete()
+        await message.delete()
+    except:
+        pass
+    await state.reset_data()
+
+
+async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db):
     pass
 
 
-async def delete_music_from_playlist(cq: types.CallbackQuery, state, db):
-    pass
+async def delete_playlist(cq: types.CallbackQuery, callback_data, state, db):
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("✅",
+                              callback_data=playlist_action.new(playlist_id=callback_data["playlist_id"],
+                                                                cur_action="confirm_delete_playlist",
+                                                                cur_page=callback_data["cur_page"]
+                                                                )),
+         InlineKeyboardButton("❌",
+                              callback_data=playlist_action.new(
+                                  playlist_id=callback_data["playlist_id"],
+                                  cur_action="back_to_edit_menu",
+                                  cur_page=callback_data["cur_page"]
+                              ))]
+    ])
+    await cq.message.edit_text("<b>Вы действительно хотите удалить плейлист?</b>", reply_markup=reply_markup)
 
 
-async def delete_playlist(cq: types.CallbackQuery, state, db):
-    pass
+async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: PlaylistPaginator, callback_data, db: Database):
+    try:
+        await db.delete_user_playlist(cq.from_user.id, int(callback_data["playlist_id"]))
+    except PlaylistNotFound:
+        await cq.message.edit_text("Плейлист не был найден")
+        return
+    reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, cur_page=callback_data["cur_page"],
+                                                              cur_mode="edit_mode", edit_mode=True, check_cur_page=True)
+    await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
 
 
 async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, playlist_pg: PlaylistPaginator, db):
@@ -463,6 +512,11 @@ async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, state, db: D
     msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id, callback_data["playlist_id"],
                                                               db, cur_page=callback_data["cur_page"])
     await cq.message.edit_text(msg_text, reply_markup=reply_markup)
+
+
+async def get_unknown_content_to_add_to_playlist(message):
+    await message.answer("Мы получили от вас неизвестный файл, либо текст, вам необходимо отправить только аудио файл, "
+                         "иначе воспользуйтесь поиском")
 
 
 def register_user(dp: Dispatcher):
@@ -500,16 +554,24 @@ def register_user(dp: Dispatcher):
     dp.register_callback_query_handler(change_playlist_title,
                                        playlist_action.filter(cur_action="change_playlist_title"))
     dp.register_callback_query_handler(add_music_to_playlist,
-                                       action_callback.filter(cur_action="add_music_to_playlist"))
+                                       playlist_action.filter(cur_action="add_music_to_playlist"))
+    dp.register_message_handler(get_music_to_add_to_playlist,
+                                content_types=ContentType.AUDIO,
+                                state=JammyMusicStates.add_music_to_playlist)
     dp.register_callback_query_handler(delete_music_from_playlist,
-                                       action_callback.filter(cur_action="delete_music_from_playlist"))
+                                       playlist_action.filter(cur_action="delete_music_from_playlist"))
     dp.register_callback_query_handler(delete_playlist,
-                                       action_callback.filter(cur_action="delete_playlist"))
+                                       playlist_action.filter(cur_action="delete_playlist"))
     dp.register_callback_query_handler(back_to_playlist_menu,
                                        playlist_navg_callback.filter(cur_action="back_to_playlist_menu"))
     dp.register_callback_query_handler(confirm_edit_playlist,
-                                       action_callback.filter(cur_action="confirm_playlist_title"),
+                                       playlist_action.filter(cur_action="confirm_playlist_title"),
                                        state=JammyMusicStates.get_new_playlist_title)
     dp.register_callback_query_handler(back_to_edit_menu,
                                        playlist_action.filter(cur_action="back_to_edit_menu"),
                                        state="*")
+    dp.register_message_handler(get_unknown_content_to_add_to_playlist,
+                                content_types=ContentType.ANY,
+                                state=JammyMusicStates.add_music_to_playlist)
+    dp.register_callback_query_handler(confirm_delete_playlist, playlist_action.filter(
+        cur_action="confirm_delete_playlist"))

@@ -90,7 +90,7 @@ class Database:
     async def create_table_track_playlist(self):
         sql = """
         CREATE TABLE IF NOT EXISTS track_playlist (
-        playlist_id INT REFERENCES user_playlists(playlist_id),
+        playlist_id INT REFERENCES user_playlists(playlist_id) ON DELETE CASCADE,
         track_id VARCHAR(100) NOT NULL,
         track_title VARCHAR(255) NOT NULL
         );
@@ -201,6 +201,16 @@ class Database:
     async def update_user_username(self, username, telegram_id):
         sql = "UPDATE users SET username=$1 WHERE telegram_id=$2"
         return await self.execute(sql, username, telegram_id, execute=True)
+
+    async def delete_user_playlist(self, user_telegram_id, playlist_id):
+        if type(playlist_id) is not int:
+            playlist_id = int(playlist_id)
+        result = await self.execute("DELETE FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2",
+                                    playlist_id, user_telegram_id,
+                                    execute=True)
+        if int((result.split())[1]) != 1:
+            raise PlaylistNotFound
+
 
     async def delete_users(self):
         await self.execute("DELETE FROM users WHERE TRUE", execute=True)
