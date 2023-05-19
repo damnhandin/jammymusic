@@ -103,17 +103,17 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     # и выбрать самый большой, но в то же время подходящий файл
     try:
         audio_stream: StreamQuery = yt_video.streams.filter(type='audio')
+        audio: Stream = yt_video.streams.get_audio_only()
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
         return
-    if audio_stream.last().filesize > 52428800:
-        audio: Stream = audio_stream.first()
-        if audio.filesize > 52428800:
-            await cq.answer('Размер аудио слишком большой, невозможно отправить')
-            return
-    else:
-        audio: Stream = audio_stream.last()
-
+    # if audio_stream.last().filesize > 52428800:
+    #     audio: Stream = audio_stream.first()
+    #     if audio.filesize > 52428800:
+    #         await cq.answer('Размер аудио слишком большой, невозможно отправить')
+    #         return
+    # else:
+    #     audio: Stream = audio_stream.last()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("Добавить в мои плейлисты",
                               callback_data=action_callback.new(cur_action="add_to_playlist"))]
@@ -121,10 +121,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     # Через буфер
     audio_file = io.BytesIO()
     await run_blocking_io(audio.stream_to_buffer, audio_file)
-    # audio.stream_to_buffer(audio_file)
-    audio_file.seek(0)
-    # Через скачивание файла в папку
-    # audio.download('download_cache')
+    await run_blocking_io(audio_file.seek, 0)
     await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
     try:
