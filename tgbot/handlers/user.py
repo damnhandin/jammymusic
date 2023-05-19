@@ -3,14 +3,12 @@ import io
 from json import loads
 
 import asyncio
-from math import ceil
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart, Text
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
-from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import MessageNotModified
 from pytube import YouTube, Stream, StreamQuery
 from pytube.exceptions import AgeRestrictedError
@@ -18,11 +16,12 @@ from youtubesearchpython import SearchVideos
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
-    playlist_action
+    playlist_action, playlist_navg_callback
 from tgbot.keyboards.inline import confirm_start_keyboard
 from tgbot.keyboards.reply import start_keyboard
 from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist
 from tgbot.misc.states import JammyMusicStates
+from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
 
 
@@ -45,85 +44,9 @@ async def user_start(message: types.Message):
                          reply_markup=start_keyboard)
 
 
-class PlaylistPaginator:
-    def __init__(self, telegram_id, edit_mode=False, cur_page=1, limit_per_page=5):
-        self.telegram_id = telegram_id
-        self.cur_page = cur_page
-        self.limit_per_page = limit_per_page
-        self.edit_mode = edit_mode
-
-    async def create_playlist_keyboard(self, db: Database, add_track_mode):
-        print(self.limit_per_page)
-        print((self.cur_page - 1) * self.limit_per_page)
-        print(self.cur_page)
-        playlists = await db.select_user_playlists(self.telegram_id, self.limit_per_page,
-                                                   (self.cur_page - 1) * self.limit_per_page)
-
-        print(playlists)
-        playlists_keyboard = await self.add_playlists_buttons(playlists)
-        await self.add_navigation_buttons(playlists_keyboard)
-        await self.add_interaction_buttons(playlists_keyboard, add_track_mode=add_track_mode)
-
-        return playlists_keyboard
-
-    async def add_interaction_buttons(self, keyboard=None, add_track_mode=False):
-        if keyboard is None:
-            keyboard = InlineKeyboardMarkup()
-
-        keyboard.row(
-            InlineKeyboardButton("🔹Создать", callback_data=action_callback.new(cur_action="create_playlist")),
-            InlineKeyboardButton("❌Отменить", callback_data=action_callback.new(cur_action="cancel_playlist"))
-            if self.edit_mode or add_track_mode else
-            InlineKeyboardButton("🔸Изменить", callback_data=action_callback.new(cur_action="edit_playlist"))
-        )
-
-    @staticmethod
-    async def add_navigation_buttons(keyboard=None):
-        if keyboard is None:
-            keyboard = InlineKeyboardMarkup()
-        keyboard.row(
-            InlineKeyboardButton("◀️", callback_data=action_callback.new(cur_action="prev_page")),
-            InlineKeyboardButton("🔄", callback_data=action_callback.new(cur_action="refresh")),
-            InlineKeyboardButton("▶️", callback_data=action_callback.new(cur_action="next_page"))
-        )
-        return keyboard
-
-    async def add_playlists_buttons(self, playlists, keyboard=None):
-        if keyboard is None:
-            keyboard = InlineKeyboardMarkup()
-        if self.edit_mode:
-            callback_data = edit_playlist_callback
-        else:
-            callback_data = playlist_callback
-
-        for playlist in playlists:
-            keyboard.row(InlineKeyboardButton(playlist["playlist_title"],
-                                              callback_data=callback_data.new(
-                                                  playlist_id=playlist["playlist_id"]
-                                              )))
-        return keyboard
-
-    async def next_page_navigation(self, db, count_of_pages, add_track_mode=False):
-        if self.cur_page + 1 > count_of_pages:
-            self.cur_page = 1
-        else:
-            self.cur_page += 1
-        keyboard = await self.create_playlist_keyboard(db, add_track_mode)
-        return keyboard
-
-    async def prev_page_navigation(self, db, count_of_pages, add_track_mode=False):
-        if self.cur_page - 1 < 1:
-            self.cur_page = count_of_pages
-        else:
-            self.cur_page -= 1
-        keyboard = await self.create_playlist_keyboard(db, add_track_mode)
-        return keyboard
-
-
-async def my_playlists(message: types.Message, db: Database, state: FSMContext):
-    playlist_paginator = await get_paginator_from_state(message.from_user.id, state, PlaylistPaginator)
-    playlist_paginator.edit_mode = False
-    reply_markup = await playlist_paginator.create_playlist_keyboard(db, add_track_mode=bool(message.audio))
+async def my_playlists(message: types.Message, playlist_pg, db: Database):
+    reply_markup = await playlist_pg.create_playlist_keyboard(message.from_user.id,
+                                                              db, add_track_mode=bool(message.audio))
     await message.answer('<b>Ваши плейлисты:</b>', reply_markup=reply_markup)
     try:
         await message.delete()
@@ -159,7 +82,6 @@ async def search_music_func(mes: types.Message, db: Database):
         reply_markup.row(InlineKeyboardButton(f"{res['duration']} {res['title']}",
                                               callback_data=video_callback.new(video_id=res["id"])))
         await db.add_video(res["id"], res["link"], res["title"])
-
 
     answer = f'<b>Результаты по запросу</b>: {mes.text}'
     # keyboard = InlineKeyboard(*kb_list, row_width=1)
@@ -206,24 +128,26 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
     try:
         await cq.message.delete()
-    except Exception as e:
+    except Exception:
         pass
 
 
-async def add_to_playlist(cq: types.CallbackQuery, state, db):
-    playlist_paginator = await get_paginator_from_state(cq.from_user.id, state, PlaylistPaginator)
+async def add_to_playlist(cq: types.CallbackQuery, playlist_pg, state, db):
     await state.update_data(previous_text=cq.message.caption)
     await state.update_data(previous_reply_markup=cq.message.reply_markup)
-    reply_markup = await playlist_paginator.create_playlist_keyboard(db, add_track_mode=bool(cq.message.audio))
+    reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db,
+                                                              add_track_mode=bool(cq.message.audio))
     await cq.message.edit_caption("Больше музыки на @jammy_music_bot\n<b>Выберите плейлист:</b>",
                                   reply_markup=reply_markup)
 
 
-async def create_playlist(cq: types.CallbackQuery, state):
+async def create_playlist(cq: types.CallbackQuery, callback_data, state):
     await JammyMusicStates.get_playlist_title.set()
     await state.update_data(msg_to_edit=cq.message)
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("❌Отменить", callback_data=action_callback.new("cancel_create_playlist"))]
+        [InlineKeyboardButton("❌Отменить", callback_data=playlist_navg_callback.new(
+            cur_page=callback_data["cur_page"], cur_mode=callback_data["cur_mode"],
+            cur_action="cancel_playlist"))]
     ])
     if cq.message.caption:
         await cq.message.edit_caption("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
@@ -251,7 +175,7 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
                               ))]
     ])
     state_name = await state.get_state()
-    if state_name is JammyMusicStates.get_playlist_title.state:
+    if state_name == JammyMusicStates.get_playlist_title.state:
         if msg_to_edit:
             if msg_to_edit.caption:
                 await msg_to_edit.edit_caption(f"Создать плейлист с названием: <b>{message.text}</b>?",
@@ -264,6 +188,7 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
         try:
             await message.delete()
         except:
+            print(1)
             pass
     else:
         if msg_to_edit:
@@ -273,21 +198,13 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
             await message.answer(f"Изменить название на <b>{message.text}</b>?",
                                  reply_markup=reply_markup)
 
-async def get_paginator_from_state(tg_id, state: FSMContext, paginator_class=PlaylistPaginator):
-    playlist_paginator = (await state.get_data()).get("playlist_paginator")
-    if playlist_paginator is None:
-        playlist_paginator = paginator_class(tg_id)
-    await state.update_data(playlist_paginator=playlist_paginator)
-    return playlist_paginator
-
-
-async def confirm_creation_playlist(cq: types.CallbackQuery, state: FSMContext, db: Database):
+async def confirm_creation_playlist(cq: types.CallbackQuery, playlist_pg, state: FSMContext, db: Database):
     data = await state.get_data()
     await state.reset_state()
-    try:
-        await cq.message.delete()
-    except:
-        pass
+    # try:
+    #     await cq.message.delete()
+    # except:
+    #     pass
     try:
         playlist_title = data["playlist_title"]
         previous_message = data.get("previous_text")
@@ -295,8 +212,7 @@ async def confirm_creation_playlist(cq: types.CallbackQuery, state: FSMContext, 
         await cq.message.delete_reply_markup()
         return
     await db.add_new_playlist(cq.from_user.id, playlist_title)
-    playlist_paginator = await get_paginator_from_state(cq.from_user.id, state, PlaylistPaginator)
-    reply_markup = await playlist_paginator.create_playlist_keyboard(db, add_track_mode=bool(cq.message.audio))
+    reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, add_track_mode=bool(cq.message.audio))
     if cq.message.caption:
         await cq.message.edit_caption(previous_message if previous_message else "<b>Ваши плейлисты:</b>",
                                       reply_markup=reply_markup)
@@ -305,57 +221,67 @@ async def confirm_creation_playlist(cq: types.CallbackQuery, state: FSMContext, 
                                    reply_markup=reply_markup)
 
 
-async def cancel_creation_playlist(cq, state, db):
+async def cancel_creation_playlist(cq, playlist_pg, callback_data, state, db):
     await state.reset_state(with_data=False)
-    paginator: PlaylistPaginator = await get_paginator_from_state(cq.from_user.id, state)
-    async with state.proxy() as data:
-        previous_text = data.get("previous_text")
-        reply_markup = data.get("previous_reply_markup")
-        if reply_markup is None:
-            reply_markup = await paginator.create_playlist_keyboard(db, add_track_mode=bool(cq.message.audio))
-        if cq.message.caption:
-            await cq.message.edit_caption(previous_text if previous_text else "<b>Ваши плейлисты:</b>",
-                                          reply_markup=reply_markup)
-        else:
-            await cq.message.edit_text(previous_text if previous_text else "<b>Ваши плейлисты:</b>",
-                                       reply_markup=reply_markup)
-
-
-async def cancel_playlist_func(cq: types.CallbackQuery, db, state):
+    reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db,
+                                                              add_track_mode=bool(cq.message.audio))
     if cq.message.audio:
-        async with state.proxy() as data:
-            previous_text = data.get("previous_text")
-            previous_reply_markup = data.get("previous_reply_markup")
-            if previous_text:
-                await cq.message.edit_caption(previous_text, reply_markup=previous_reply_markup)
-            else:
-                await cq.message.edit_reply_markup(reply_markup=previous_reply_markup)
+        await cq.message.edit_caption("<b>Ваши плейлисты:</b>",
+                                      reply_markup=reply_markup)
     else:
-        paginator: PlaylistPaginator = await get_paginator_from_state(cq.from_user.id, state)
-        paginator.edit_mode = False
-        reply_markup = await paginator.create_playlist_keyboard(db, bool(cq.message.audio))
-        await cq.message.edit_text("<b>Ваши плейлисты</b>", reply_markup=reply_markup)
+        await cq.message.edit_text("<b>Ваши плейлисты:</b>",
+                                   reply_markup=reply_markup)
 
 
-async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db):
+async def cancel_playlist_func(cq: types.CallbackQuery, callback_data, playlist_pg, db, state):
+    await state.reset_state()
+    if cq.message.audio:
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton("Добавить в мои плейлисты",
+                                  callback_data=action_callback.new(cur_action="add_to_playlist"))]
+        ])
+        try:
+            await cq.message.edit_caption("Больше музыки на @jammy_music_bot", reply_markup=reply_markup)
+        except:
+            pass
+    else:
+        try:
+            reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id,
+                                                                      db,
+                                                                      cur_page=callback_data["cur_page"])
+        except KeyError:
+            await cq.message.delete_reply_markup()
+            return
+        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+
+
+async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur_page=1):
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("📝Изм. название",
                               callback_data=playlist_action.new(playlist_id=playlist_id,
-                                                                cur_action="change_playlist_title")),
+                                                                cur_action="change_playlist_title",
+                                                                cur_page=cur_page)),
          InlineKeyboardButton("🎶Добавить",
                               callback_data=playlist_action.new(playlist_id=playlist_id,
-                                                                 cur_action="add_music_to_playlist"))],
+                                                                cur_action="add_music_to_playlist",
+                                                                cur_page=cur_page))],
         [
             InlineKeyboardButton("🎶Убрать",
                                  callback_data=playlist_action.new(playlist_id=playlist_id,
-                                                                   cur_action="delete_music_from_playlist")),
+                                                                   cur_action="delete_music_from_playlist",
+                                                                   cur_page=cur_page)),
             InlineKeyboardButton("❌Удалить плейлист",
                                  callback_data=playlist_action.new(playlist_id=playlist_id,
-                                                                   cur_action="delete_playlist"))
+                                                                   cur_action="delete_playlist",
+                                                                   cur_page=cur_page))
         ],
         [
             InlineKeyboardButton("Назад",
-                                 callback_data=action_callback.new(cur_action="back_to_playlist_menu"))
+                                 callback_data=playlist_navg_callback.new(
+                                     cur_page=cur_page,
+                                     cur_mode="edit_mode",
+                                     cur_action="back_to_playlist_menu"
+                                                                          ))
         ]
     ])
     msg_text = f"📝<b>Название:</b>\n{playlist['playlist_title']}\n\n" \
@@ -391,18 +317,17 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
             except:
                 pass
     else:
-        paginator = await get_paginator_from_state(cq.from_user.id, state)
-        if not paginator.edit_mode:
-            print("hereeeeeeee")
+        if callback_data["cur_mode"] == "default":
             try:
                 result = await db.select_user_tracks_from_playlist(cq.from_user.id, callback_data["playlist_id"])
             except PlaylistNotFound:
                 await cq.answer("Плейлист не был найден")
             else:
+                if not result:
+                    await cq.answer("У вас нет песен в этом плейлисте")
+                    return
                 counter = 0
                 media_group = MediaGroup()
-                print("hereeeeeeeeee")
-                print(result)
                 for track in result:
                     counter += 1
                     media_group.attach(InputMediaAudio(media=track["track_id"]))
@@ -418,22 +343,26 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
             playlist = await db.select_user_playlist(callback_data["playlist_id"])
             try:
                 msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id,
-                                                                          callback_data["playlist_id"], db)
+                                                                          callback_data["playlist_id"], db,
+                                                                          cur_page=callback_data["cur_page"])
             except PlaylistNotFound:
                 await cq.answer("Плейлист не был найден")
                 return
             await cq.message.edit_text(msg_text, reply_markup=reply_markup)
 
 
-async def page_navigation(cq, callback_data, state, db: Database):
-    paginator = await get_paginator_from_state(cq.from_user.id, state)
-    count_of_pages = ceil((await db.count_of_user_playlists(cq.from_user.id)) / paginator.limit_per_page)
-    if count_of_pages == 0:
-        count_of_pages = 1
+async def page_navigation(cq, callback_data, playlist_pg: PlaylistPaginator, db: Database):
+    count_of_pages = await playlist_pg.count_of_amount_pages_of_user_playlist(cq.from_user.id, db)
     if callback_data["cur_action"] == "prev_page":
-        reply_markup = await paginator.prev_page_navigation(db, count_of_pages, add_track_mode=bool(cq.message.audio))
+        reply_markup = await playlist_pg.prev_page_navigation(cq.from_user.id, int(callback_data["cur_page"]),
+                                                              callback_data["cur_mode"],
+                                                              db, count_of_pages,
+                                                              add_track_mode=bool(cq.message.audio))
     else:
-        reply_markup = await paginator.next_page_navigation(db, count_of_pages, add_track_mode=bool(cq.message.audio))
+        reply_markup = await playlist_pg.next_page_navigation(cq.from_user.id, int(callback_data["cur_page"]),
+                                                              callback_data["cur_mode"],
+                                                              db, count_of_pages,
+                                                              add_track_mode=bool(cq.message.audio))
     try:
         await cq.message.edit_reply_markup(reply_markup=reply_markup)
     except MessageNotModified:
@@ -441,17 +370,21 @@ async def page_navigation(cq, callback_data, state, db: Database):
     await cq.answer()
 
 
-async def start_edit_mode(cq, state, db):
-    paginator = await get_paginator_from_state(cq.from_user.id, state)
-    paginator.edit_mode = True
-    keyboard = await paginator.create_playlist_keyboard(db, add_track_mode=False)
+async def start_edit_mode(cq, playlist_pg, callback_data, db):
+    keyboard = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db,
+                                                          cur_page=callback_data["cur_page"],
+                                                          cur_mode="edit_mode",
+                                                          add_track_mode=False, edit_mode=True)
     await cq.message.edit_reply_markup(reply_markup=keyboard)
 
 
-async def change_playlist_title(cq, state, callback_data, db):
+async def change_playlist_title(cq, state, callback_data):
     await JammyMusicStates.get_new_playlist_title.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("❌Отменить", callback_data=action_callback.new("cancel_create_playlist"))]
+        [InlineKeyboardButton("❌Отменить", callback_data=playlist_action.new(
+            playlist_id=callback_data["playlist_id"],
+            cur_action="back_to_edit_menu",
+            cur_page=callback_data["cur_page"]))]
     ])
     msg_to_edit = await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
     await state.update_data(msg_to_edit=msg_to_edit, playlist_id=callback_data["playlist_id"])
@@ -459,8 +392,9 @@ async def change_playlist_title(cq, state, callback_data, db):
 
 async def get_and_set_new_playlist_title(message: types.Message, config, state, db):
     if len(message.text) >= config.misc.playlist_title_length_limit:
-        msg_to_edit = await message.answer(f"Ваше название слишком длинное, максимальная допустимая длина "
-                             f"{config.misc.playlist_title_length_limit} символов, напишите название снова.")
+        msg_to_edit = await message.answer(
+            f"Ваше название слишком длинное, максимальная допустимая длина "
+            f"{config.misc.playlist_title_length_limit} символов, напишите название снова.")
         await state.update_data(msg_to_edit=msg_to_edit)
         return
     await state.reset_state(with_data=False)
@@ -494,20 +428,57 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
         await cq.message.answer(msg_text, reply_markup=reply_markup)
 
 
+async def add_music_to_playlist(cq: types.CallbackQuery, state, db):
+    # await JammyMusicStates.add_music_to_playlist.set()
+    # reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+    #     [InlineKeyboardButton("❌Отменить",
+    #                           callback_data=playlist_action.new(playlist_id=,
+    #                                                             cur_action="back_to_edit_menu"))]
+    # ])
+    # await cq.message.edit_text("<b>Пришлите песню для добавления:</b>")
+    pass
+
+
+async def delete_music_from_playlist(cq: types.CallbackQuery, state, db):
+    pass
+
+
+async def delete_playlist(cq: types.CallbackQuery, state, db):
+    pass
+
+
+async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, playlist_pg: PlaylistPaginator, db):
+    cur_page = int(callback_data["cur_page"])
+    print(f"{cur_page=}")
+    reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, cur_page=cur_page,
+                                                              cur_mode=callback_data["cur_mode"], check_cur_page=True)
+    await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+
+
+async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, state, db: Database):
+    await state.reset_state()
+    if cq.message.caption:
+        return
+    playlist = await db.select_user_playlist(callback_data["playlist_id"])
+    msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id, callback_data["playlist_id"],
+                                                              db, cur_page=callback_data["cur_page"])
+    await cq.message.edit_text(msg_text, reply_markup=reply_markup)
+
 
 def register_user(dp: Dispatcher):
     dp.register_message_handler(user_start, CommandStart())
     dp.register_message_handler(user_start_with_state, CommandStart(), state="*")
-    dp.register_callback_query_handler(create_playlist, action_callback.filter(cur_action="create_playlist"))
+    dp.register_callback_query_handler(create_playlist, playlist_navg_callback.filter(cur_action="create_playlist"))
     dp.register_message_handler(get_playlist_title_and_set, state=[JammyMusicStates.get_playlist_title,
                                 JammyMusicStates.get_new_playlist_title],
                                 content_types=ContentType.TEXT)
     dp.register_callback_query_handler(user_confirm_start, action_callback.filter(cur_action="confirm_to_start_menu"),
                                        state="*")
     dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"))
-    dp.register_callback_query_handler(cancel_creation_playlist, action_callback.filter(
-        cur_action=["cancel_create_playlist",
-                    "cancel_creation"]),
+    dp.register_callback_query_handler(cancel_creation_playlist, playlist_navg_callback.filter(
+        cur_action=["cancel_create_playlist"]),
+                                       state="*")
+    dp.register_callback_query_handler(cancel_creation_playlist, action_callback.filter(cur_action="cancel_creation"),
                                        state="*")
     dp.register_callback_query_handler(delete_this_cq_message,
                                        action_callback.filter(cur_action="cancel_to_start_menu"),
@@ -519,21 +490,26 @@ def register_user(dp: Dispatcher):
                                        action_callback.filter(cur_action="confirm_playlist_title"),
                                        state=JammyMusicStates.get_playlist_title)
 
-    dp.register_callback_query_handler(cancel_playlist_func, action_callback.filter(cur_action="cancel_playlist"))
+    dp.register_callback_query_handler(cancel_playlist_func, playlist_navg_callback.filter(
+        cur_action="cancel_playlist"), state="*")
     dp.register_callback_query_handler(choose_playlist, playlist_callback.filter())
     dp.register_callback_query_handler(choose_playlist, edit_playlist_callback.filter())
-    dp.register_callback_query_handler(page_navigation, action_callback.filter(cur_action=["prev_page", "next_page"]))
-    dp.register_callback_query_handler(start_edit_mode, action_callback.filter(cur_action="edit_playlist"))
+    dp.register_callback_query_handler(page_navigation, playlist_navg_callback.filter(
+        cur_action=["prev_page", "next_page"]))
+    dp.register_callback_query_handler(start_edit_mode, playlist_navg_callback.filter(cur_action="edit_playlist"))
     dp.register_callback_query_handler(change_playlist_title,
                                        playlist_action.filter(cur_action="change_playlist_title"))
-    # dp.register_callback_query_handler(add_music_to_playlist,
-    #                                    action_callback.filter(cur_action="add_music_to_playlist")
-    # dp.register_callback_query_handler(delete_music_from_playlist,
-    #                                    action_callback.filter(cur_action="delete_music_from_playlist")
-    # dp.register_callback_query_handler(delete_playlist,
-    #                                    action_callback.filter(cur_action="delete_playlist")
-    # dp.register_callback_query_handler(back_to_playlist_menu,
-    #                                    action_callback.filter(cur_action="back_to_playlist_menu")
+    dp.register_callback_query_handler(add_music_to_playlist,
+                                       action_callback.filter(cur_action="add_music_to_playlist"))
+    dp.register_callback_query_handler(delete_music_from_playlist,
+                                       action_callback.filter(cur_action="delete_music_from_playlist"))
+    dp.register_callback_query_handler(delete_playlist,
+                                       action_callback.filter(cur_action="delete_playlist"))
+    dp.register_callback_query_handler(back_to_playlist_menu,
+                                       playlist_navg_callback.filter(cur_action="back_to_playlist_menu"))
     dp.register_callback_query_handler(confirm_edit_playlist,
                                        action_callback.filter(cur_action="confirm_playlist_title"),
                                        state=JammyMusicStates.get_new_playlist_title)
+    dp.register_callback_query_handler(back_to_edit_menu,
+                                       playlist_action.filter(cur_action="back_to_edit_menu"),
+                                       state="*")
