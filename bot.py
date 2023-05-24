@@ -9,6 +9,11 @@ from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.handlers.admin import register_admin
 from tgbot.handlers.echo import register_echo
+from tgbot.handlers.find_song import register_find_song
+from tgbot.handlers.find_song_lyrics import register_find_lyrics
+from tgbot.handlers.find_song_words import register_find_song_words
+from tgbot.handlers.shazam import register_shazam
+from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.user import register_user
 from tgbot.middlewares.environment import EnvironmentMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
@@ -49,6 +54,11 @@ def register_all_filters(dp):
 def register_all_handlers(dp):
     register_admin(dp)
     register_user(dp)
+    register_similar_songs_search(dp)  # Эту функцию нужно реализовать
+    register_shazam(dp)  # Эту функцию нужно реализовать
+    register_find_song(dp)  # Эту функцию нужно реализовать
+    register_find_lyrics(dp)  # Эту функцию нужно реализовать
+    register_find_song_words(dp)  # Эту функцию нужно реализовать
 
     register_echo(dp)
 

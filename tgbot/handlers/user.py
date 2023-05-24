@@ -44,7 +44,8 @@ async def user_start(message: types.Message):
                          reply_markup=start_keyboard)
 
 
-async def my_playlists(message: types.Message, playlist_pg, db: Database):
+async def my_playlists(message: types.Message, playlist_pg, state, db: Database):
+    await state.reset_stssssssate()
     reply_markup = await playlist_pg.create_playlist_keyboard(message.from_user.id,
                                                               db, add_track_mode=bool(message.audio))
     await message.answer('<b>Ваши плейлисты:</b>', reply_markup=reply_markup)
@@ -520,6 +521,7 @@ async def get_unknown_content_to_add_to_playlist(message):
     await message.answer("Мы получили от вас неизвестный файл, либо текст, вам необходимо отправить только аудио файл, "
                          "иначе воспользуйтесь поиском")
 
+
 async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
     count_of_songs = await db.count_song_in_user_playlist(int(callback_data["playlist_id"]))
     if count_of_songs == 0:
@@ -586,15 +588,14 @@ async def get_unknown_content_to_delete_song_func(message):
 
 
 def register_user(dp: Dispatcher):
-    dp.register_message_handler(user_start, CommandStart())
     dp.register_message_handler(user_start_with_state, CommandStart(), state="*")
+    dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"), state="*")
     dp.register_callback_query_handler(create_playlist, playlist_navg_callback.filter(cur_action="create_playlist"))
     dp.register_message_handler(get_playlist_title_and_set, state=[JammyMusicStates.get_playlist_title,
                                 JammyMusicStates.get_new_playlist_title],
                                 content_types=ContentType.TEXT)
     dp.register_callback_query_handler(user_confirm_start, action_callback.filter(cur_action="confirm_to_start_menu"),
                                        state="*")
-    dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"))
     dp.register_callback_query_handler(cancel_creation_playlist, playlist_navg_callback.filter(
         cur_action=["cancel_create_playlist"]),
                                        state="*")
@@ -645,3 +646,4 @@ def register_user(dp: Dispatcher):
                                 content_types=ContentType.TEXT, state=JammyMusicStates.get_number_of_song_to_delete)
     dp.register_message_handler(get_unknown_content_to_delete_song_func,
                                 content_types=ContentType.ANY, state=JammyMusicStates.get_number_of_song_to_delete)
+    dp.register_message_handler(user_start, CommandStart())
