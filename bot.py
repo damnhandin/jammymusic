@@ -7,11 +7,13 @@ from aiogram.contrib.fsm_storage.redis import RedisStorage2
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
+from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin
 from tgbot.handlers.echo import register_echo
 from tgbot.handlers.find_song import register_find_song
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
 from tgbot.handlers.find_song_words import register_find_song_words
+from tgbot.handlers.search_music import register_search_music
 from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.user import register_user
@@ -59,6 +61,8 @@ def register_all_handlers(dp):
     register_find_song(dp)  # Эту функцию нужно реализовать
     register_find_lyrics(dp)  # Эту функцию нужно реализовать
     register_find_song_words(dp)  # Эту функцию нужно реализовать
+    register_add_own_music(dp)
+    register_search_music(dp)
 
     register_echo(dp)
 

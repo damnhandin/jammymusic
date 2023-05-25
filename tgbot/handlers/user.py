@@ -31,8 +31,12 @@ async def user_start_with_state(message):
 
 async def user_confirm_start(cq, state):
     await state.reset_state(with_data=True)
-    await cq.message.edit_text("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
-                               reply_markup=start_keyboard)
+    try:
+        await cq.message.delete()
+    except:
+        pass
+    await cq.message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
+                            reply_markup=start_keyboard)
 
 
 async def delete_this_cq_message(cq: types.CallbackQuery):
@@ -45,7 +49,7 @@ async def user_start(message: types.Message):
 
 
 async def my_playlists(message: types.Message, playlist_pg, state, db: Database):
-    await state.reset_stssssssate()
+    await state.reset_state()
     reply_markup = await playlist_pg.create_playlist_keyboard(message.from_user.id,
                                                               db, add_track_mode=bool(message.audio))
     await message.answer('<b>Ваши плейлисты:</b>', reply_markup=reply_markup)
@@ -64,32 +68,6 @@ async def run_blocking_io(func, *args):
     return result
 
 
-async def search_music_func(mes: types.Message, db: Database):
-    try:
-        await mes.delete()
-    except Exception:
-        pass
-    # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
-    search_results = (await run_blocking_io(
-        SearchVideos, mes.text, 1, 'json', 5, 'ru-RU', 'RU'
-    )).result()
-    if not search_results:
-        await mes.answer("Никаких совпадений по запросу.")
-        return
-    search_results_json = await run_blocking_io(loads, search_results)
-    reply_markup = InlineKeyboardMarkup()
-    for res in search_results_json["search_result"]:
-        # self.id, self.link, self.title, self.channel, self.duration
-        reply_markup.row(InlineKeyboardButton(f"{res['duration']} {res['title']}",
-                                              callback_data=video_callback.new(video_id=res["id"])))
-        await db.add_video(res["id"], res["link"], res["title"])
-
-    answer = f'<b>Результаты по запросу</b>: {mes.text}'
-    # keyboard = InlineKeyboard(*kb_list, row_width=1)
-
-    await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
-
-
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Database):
     await cq.answer("Ищем информацию по данному запросу!")
     video = await db.select_video_by_id(callback_data["video_id"])
@@ -103,7 +81,6 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
-        audio_stream: StreamQuery = yt_video.streams.filter(type='audio')
         audio: Stream = yt_video.streams.get_audio_only()
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
@@ -588,6 +565,7 @@ async def get_unknown_content_to_delete_song_func(message):
 
 
 def register_user(dp: Dispatcher):
+    dp.register_message_handler(user_start, CommandStart())
     dp.register_message_handler(user_start_with_state, CommandStart(), state="*")
     dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"), state="*")
     dp.register_callback_query_handler(create_playlist, playlist_navg_callback.filter(cur_action="create_playlist"))
@@ -604,7 +582,6 @@ def register_user(dp: Dispatcher):
     dp.register_callback_query_handler(delete_this_cq_message,
                                        action_callback.filter(cur_action="cancel_to_start_menu"),
                                        state="*")
-    dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)
     dp.register_callback_query_handler(user_choose_video_cq, video_callback.filter())
     dp.register_callback_query_handler(add_to_playlist, action_callback.filter(cur_action="add_to_playlist"))
     dp.register_callback_query_handler(confirm_creation_playlist,
@@ -646,4 +623,3 @@ def register_user(dp: Dispatcher):
                                 content_types=ContentType.TEXT, state=JammyMusicStates.get_number_of_song_to_delete)
     dp.register_message_handler(get_unknown_content_to_delete_song_func,
                                 content_types=ContentType.ANY, state=JammyMusicStates.get_number_of_song_to_delete)
-    dp.register_message_handler(user_start, CommandStart())

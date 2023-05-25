@@ -1,0 +1,40 @@
+from json import loads
+
+from aiogram import Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from youtubesearchpython import SearchVideos
+
+from tgbot.handlers.user import run_blocking_io
+from tgbot.keyboards.callback_datas import video_callback
+from tgbot.models.db_utils import Database
+
+
+async def search_music_func(mes: types.Message, db: Database):
+    try:
+        await mes.delete()
+    except Exception:
+        pass
+    # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
+    search_results = (await run_blocking_io(
+        SearchVideos, mes.text, 1, 'json', 5, 'ru-RU', 'RU'
+    )).result()
+    if not search_results:
+        await mes.answer("Никаких совпадений по запросу.")
+        return
+    search_results_json = await run_blocking_io(loads, search_results)
+    reply_markup = InlineKeyboardMarkup()
+    for res in search_results_json["search_result"]:
+        # self.id, self.link, self.title, self.channel, self.duration
+        reply_markup.row(InlineKeyboardButton(f"{res['duration']} {res['title']}",
+                                              callback_data=video_callback.new(video_id=res["id"])))
+        await db.add_video(res["id"], res["link"], res["title"])
+
+    answer = f'<b>Результаты по запросу</b>: {mes.text}'
+    # keyboard = InlineKeyboard(*kb_list, row_width=1)
+
+    await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
+
+
+def register_search_music(dp: Dispatcher):
+    dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)
+
