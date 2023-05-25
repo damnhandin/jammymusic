@@ -7,4 +7,4 @@ async def find_song_words(message: types.Message):
 
 
 def register_find_song_words(dp: Dispatcher):
-    await dp.register_message_handler(find_song_words, Text("🎵 Найти песню по словам"))
+    dp.register_message_handler(find_song_words, Text("🎵 Найти песню по словам"))

@@ -7,4 +7,4 @@ async def shazam(message: types.Message):
 
 
 def register_shazam(dp: Dispatcher):
-    await dp.register_message_handler(shazam, Text("🎙 Shazam"))
+    dp.register_message_handler(shazam, Text("🎙 Shazam"))

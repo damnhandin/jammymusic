@@ -7,4 +7,4 @@ async def find_song_lyrics(message: types.Message):
 
 
 def register_find_lyrics(dp: Dispatcher):
-    await dp.register_message_handler(find_song_lyrics, Text("📄 Найти текст песни"))
+    dp.register_message_handler(find_song_lyrics, Text("📄 Найти текст песни"))

@@ -7,4 +7,4 @@ async def similar_songs_search(message: types.Message):
 
 
 def register_similar_songs_search(dp: Dispatcher):
-    await dp.register_message_handler(similar_songs_search, Text("🎼 Найти похожие треки"))
+    dp.register_message_handler(similar_songs_search, Text("🎼 Найти похожие треки"))
