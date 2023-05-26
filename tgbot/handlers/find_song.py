@@ -3,7 +3,7 @@ from aiogram.dispatcher.filters import Text
 
 
 async def find_song_func(message: types.Message):
-    pass
+    await message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио")
 
 
 def register_find_song(dp: Dispatcher):

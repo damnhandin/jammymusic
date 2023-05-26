@@ -58,10 +58,11 @@ def register_all_handlers(dp):
     register_user(dp)
     register_similar_songs_search(dp)  # Эту функцию нужно реализовать
     register_shazam(dp)  # Эту функцию нужно реализовать
-    register_find_song(dp)  # Эту функцию нужно реализовать
     register_find_lyrics(dp)  # Эту функцию нужно реализовать
     register_find_song_words(dp)  # Эту функцию нужно реализовать
     register_add_own_music(dp)
+    register_find_song(dp)  # Эту функцию нужно реализовать
+
     register_search_music(dp)
 
     register_echo(dp)
