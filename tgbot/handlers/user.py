@@ -274,9 +274,11 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
 async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
     print(callback_data)
     if cq.message.audio:
+        print(cq.message.audio)
         try:
+            audio_title = cq.message.audio.title if cq.message.audio.title else cq.message.audio.file_name
             await db.add_track_into_playlist(cq.from_user.id, cq.message.audio.file_id,
-                                             cq.message.audio.title,
+                                             audio_title,
                                              callback_data["playlist_id"])
         except PlaylistNotFound:
             await cq.answer("Плейлист не был найден")

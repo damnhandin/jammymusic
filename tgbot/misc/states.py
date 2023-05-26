@@ -6,3 +6,4 @@ class JammyMusicStates(StatesGroup):
     get_new_playlist_title = State()
     add_music_to_playlist = State()
     get_number_of_song_to_delete = State()
+    add_own_song = State()
