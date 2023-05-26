@@ -2,6 +2,7 @@ from json import loads
 
 from aiogram import Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from aiogram.utils.exceptions import MessageIsTooLong
 from youtubesearchpython import SearchVideos
 
 from tgbot.handlers.user import run_blocking_io
@@ -31,9 +32,10 @@ async def search_music_func(mes: types.Message, db: Database):
 
     answer = f'<b>Результаты по запросу</b>: {mes.text}'
     # keyboard = InlineKeyboard(*kb_list, row_width=1)
-
-    await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
-
+    try:
+        await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
+    except MessageIsTooLong:
+        await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
 
 def register_search_music(dp: Dispatcher):
     dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)

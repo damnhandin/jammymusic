@@ -1,6 +1,4 @@
 import io
-from io import BytesIO
-from typing import IO
 
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text

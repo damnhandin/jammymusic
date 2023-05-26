@@ -12,7 +12,7 @@ from tgbot.handlers.admin import register_admin
 from tgbot.handlers.echo import register_echo
 from tgbot.handlers.find_song import register_find_song
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
-from tgbot.handlers.find_song_words import register_find_song_words
+from tgbot.handlers.find_song_by_words import register_find_song_by_words
 from tgbot.handlers.search_music import register_search_music
 from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
@@ -59,7 +59,7 @@ def register_all_handlers(dp):
     register_similar_songs_search(dp)  # Эту функцию нужно реализовать
     register_shazam(dp)  # Эту функцию нужно реализовать
     register_find_lyrics(dp)  # Эту функцию нужно реализовать
-    register_find_song_words(dp)  # Эту функцию нужно реализовать
+    register_find_song_by_words(dp)  # Эту функцию нужно реализовать
     register_add_own_music(dp)
     register_find_song(dp)  # Эту функцию нужно реализовать
 

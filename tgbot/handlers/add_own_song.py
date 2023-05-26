@@ -26,10 +26,10 @@ async def get_own_song_to_add(message: types.Message, state: FSMContext):
     await message.answer_audio(audio=audio, reply_markup=reply_markup)
 
 
-
 async def get_unknown_content_add_own_song_state(message):
     await message.answer("Похоже, что вы хотели добавить песню, но мы получили от вас неизвестный формат файла, "
                          "пожалуйста убедитесь в том, что вы действительно отправили аудио")
+
 
 def register_add_own_music(dp: Dispatcher):
     dp.register_message_handler(add_own_song_func, Text("😎 Добавить свой трек"))

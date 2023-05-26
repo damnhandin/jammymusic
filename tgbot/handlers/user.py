@@ -59,6 +59,15 @@ async def my_playlists(message: types.Message, playlist_pg, state, db: Database)
         pass
 
 
+async def run_cpu_bound(func, *args):
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ProcessPoolExecutor() as pool:
+        result = await loop.run_in_executor(
+            pool, func, *args
+        )
+    return result
+
+
 async def run_blocking_io(func, *args):
     loop = asyncio.get_running_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
