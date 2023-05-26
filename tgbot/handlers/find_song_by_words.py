@@ -4,12 +4,13 @@ from aiogram.types import ContentType
 import lyricsgenius
 
 from tgbot.config import Config
-from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.misc.states import JammyMusicStates
+
 
 async def find_song_by_words(message: types.Message):
     await JammyMusicStates.find_music_by_words.set()
     await message.answer("Отправь часть текста песни, а я отправлю ее название, если найду")
+
 
 async def format_songs_title_to_message_text(data):
     msg_text = "<b>Результаты по вашему запросу:</b>\n"
@@ -19,6 +20,7 @@ async def format_songs_title_to_message_text(data):
         except KeyError:
             continue
     return msg_text
+
 
 async def get_text_to_find_song(message: types.Message, config: Config, state):
     await state.reset_state()
@@ -30,12 +32,12 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
     else:
         try:
             result = result["sections"][0]["hits"]
-            print(result)
         except KeyError:
             await message.answer("К сожалению, нам не удалось найти данную песню")
             return
     msg_text = await format_songs_title_to_message_text(result)
     await message.answer(msg_text)
+
 
 async def get_unknown_content_to_find_song(message: types.Message):
     await message.answer("Похоже, что вы хотели найти песню по тексту, но мы получили от вас неизвестный формат файла, "

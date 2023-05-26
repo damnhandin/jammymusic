@@ -122,6 +122,7 @@ class Database:
     async def select_user_playlists(self, telegram_id, limit, offset):
         sql = """SELECT * FROM user_playlists 
         WHERE user_telegram_id=$1
+        ORDER BY playlist_id ASC
         LIMIT $2 OFFSET $3;"""
         return await self.execute(sql, telegram_id, limit, offset, fetch=True)
 

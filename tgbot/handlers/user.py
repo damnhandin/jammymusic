@@ -1,6 +1,5 @@
 import concurrent.futures
 import io
-from json import loads
 
 import asyncio
 
@@ -10,9 +9,8 @@ from aiogram.dispatcher.filters import CommandStart, Text
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
 from aiogram.utils.exceptions import MessageNotModified
-from pytube import YouTube, Stream, StreamQuery
+from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
-from youtubesearchpython import SearchVideos
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
@@ -140,7 +138,7 @@ async def create_playlist(cq: types.CallbackQuery, callback_data, state):
         await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
 
 
-async def get_playlist_title_and_set(message: types.Message, config: Config, state: FSMContext):
+async def get_playlist_title_and_set(message: types.Message, config: Config, state: FSMContext, db):
     if len(message.text) >= config.misc.playlist_title_length_limit:
         msg_to_edit = await message.answer(
             f"Ваше название слишком длинное, максимальная допустимая длина "
@@ -160,6 +158,7 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
                               ))]
     ])
     state_name = await state.get_state()
+    print(f"{state_name=}")
     if state_name == JammyMusicStates.get_playlist_title.state:
         if msg_to_edit:
             if msg_to_edit.caption:
@@ -173,9 +172,13 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
         try:
             await message.delete()
         except:
-            print(1)
             pass
     else:
+        data = await state.get_data()
+        if not await check_if_user_playlist_is_available(data["playlist_id"], db):
+            await message.answer("Плейлист недоступен")
+            await state.reset_state()
+            return
         if msg_to_edit:
             await msg_to_edit.edit_text(f"Изменить название на <b>{message.text}</b>?",
                                         reply_markup=reply_markup)
@@ -183,13 +186,10 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
             await message.answer(f"Изменить название на <b>{message.text}</b>?",
                                  reply_markup=reply_markup)
 
+
 async def confirm_creation_playlist(cq: types.CallbackQuery, playlist_pg, state: FSMContext, db: Database):
     data = await state.get_data()
     await state.reset_state()
-    # try:
-    #     await cq.message.delete()
-    # except:
-    #     pass
     try:
         playlist_title = data["playlist_title"]
         previous_message = data.get("previous_text")
@@ -365,7 +365,21 @@ async def start_edit_mode(cq, playlist_pg, callback_data, db):
     await cq.message.edit_reply_markup(reply_markup=keyboard)
 
 
-async def change_playlist_title(cq, state, callback_data):
+async def check_if_user_playlist_is_available(playlist_id, db):
+    playlist = await db.select_user_playlist(playlist_id)
+    return bool(playlist)
+
+
+async def change_playlist_title(cq: types.CallbackQuery, state, callback_data, db: Database):
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     await JammyMusicStates.get_new_playlist_title.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("❌Отменить", callback_data=playlist_action.new(
@@ -377,19 +391,18 @@ async def change_playlist_title(cq, state, callback_data):
     await state.update_data(msg_to_edit=msg_to_edit, playlist_id=callback_data["playlist_id"])
 
 
-async def get_and_set_new_playlist_title(message: types.Message, config, state, db):
-    if len(message.text) >= config.misc.playlist_title_length_limit:
-        msg_to_edit = await message.answer(
-            f"Ваше название слишком длинное, максимальная допустимая длина "
-            f"{config.misc.playlist_title_length_limit} символов, напишите название снова.")
-        await state.update_data(msg_to_edit=msg_to_edit)
-        return
-    await state.reset_state(with_data=False)
-
-
 async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
     data = await state.get_data()
     await state.reset_state()
+    if not await check_if_user_playlist_is_available(data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     try:
         await cq.message.delete()
     except:
@@ -416,6 +429,15 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
 
 
 async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, db):
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     await JammyMusicStates.add_music_to_playlist.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("❌Отменить", callback_data=playlist_action.new(
@@ -432,13 +454,19 @@ async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, d
     # ])
     # await cq.message.edit_text("<b>Пришлите песню для добавления:</b>")
 
+
 async def delete_format_name_from_filename(filename: str):
     index = filename.find(".mp3")
     return filename[:index]
 
+
 async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext, db: Database):
-    await state.reset_state(with_data=False)
     data = await state.get_data()
+    if not await check_if_user_playlist_is_available(data["playlist_id"], db):
+        await message.answer("Плейлист недоступен")
+        await state.reset_state()
+        return
+    await state.reset_state(with_data=False)
     playlist_id = int(data["playlist_id"])
     msg_to_delete = data["msg_to_delete"]
     audio_title = await delete_format_name_from_filename(message.audio.file_name)
@@ -450,8 +478,22 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
         pass
     await state.reset_data()
 
+async def get_unknown_content_to_add_to_playlist(message):
+    await message.answer("Похоже, что вы хотели добавить аудиофайл в плейлист, но вместо этого отправили неизвестный "
+                         "формат медиафайла, либо просто текст, пожалуйста убедитесь, что отправляете именно "
+                         "аудио.")
+
 
 async def delete_playlist(cq: types.CallbackQuery, callback_data, state, db):
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("✅",
                               callback_data=playlist_action.new(playlist_id=callback_data["playlist_id"],
@@ -468,7 +510,17 @@ async def delete_playlist(cq: types.CallbackQuery, callback_data, state, db):
     await cq.message.edit_text("<b>Вы действительно хотите удалить плейлист?</b>", reply_markup=reply_markup)
 
 
-async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: PlaylistPaginator, callback_data, db: Database):
+async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: PlaylistPaginator,
+                                  state, callback_data, db: Database):
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     try:
         await db.delete_user_playlist(cq.from_user.id, int(callback_data["playlist_id"]))
     except PlaylistNotFound:
@@ -489,6 +541,15 @@ async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, p
 
 async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg, state, db: Database):
     await state.reset_state()
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     if cq.message.caption:
         return
     playlist = await db.select_user_playlist(callback_data["playlist_id"])
@@ -505,12 +566,16 @@ async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg,
     await cq.message.edit_text(msg_text, reply_markup=reply_markup)
 
 
-async def get_unknown_content_to_add_to_playlist(message):
-    await message.answer("Мы получили от вас неизвестный файл, либо текст, вам необходимо отправить только аудио файл, "
-                         "иначе воспользуйтесь поиском")
-
-
 async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
+    if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
+        await cq.answer("Плейлист недоступен")
+        try:
+            await cq.message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     count_of_songs = await db.count_song_in_user_playlist(int(callback_data["playlist_id"]))
     if count_of_songs == 0:
         await cq.answer("У вас нет песен в плейлисте!")
@@ -534,9 +599,18 @@ async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, sta
 
 
 async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, state):
+    data = await state.get_data()
+    if not await check_if_user_playlist_is_available(data["playlist_id"], db):
+        await message.answer("Плейлист недоступен")
+        try:
+            await message.delete_reply_markup()
+        except:
+            pass
+        finally:
+            await state.reset_state()
+            return
     try:
         number_song = int(message.text)
-        data = await state.get_data()
         count_of_songs = await db.count_song_in_user_playlist(int(data["playlist_id"]))
         if number_song < 1 or number_song > count_of_songs:
             raise WrongSongNumber
@@ -620,7 +694,7 @@ def register_user(dp: Dispatcher):
     dp.register_callback_query_handler(back_to_playlist_menu,
                                        playlist_navg_callback.filter(cur_action="back_to_playlist_menu"))
     dp.register_callback_query_handler(confirm_edit_playlist,
-                                       playlist_action.filter(cur_action="confirm_playlist_title"),
+                                       action_callback.filter(cur_action="confirm_playlist_title"),
                                        state=JammyMusicStates.get_new_playlist_title)
     dp.register_callback_query_handler(back_to_edit_menu,
                                        playlist_action.filter(cur_action="back_to_edit_menu"),
