@@ -45,7 +45,8 @@ async def get_unknown_content_to_find_song(message: types.Message):
 
 
 def register_find_song_by_words(dp: Dispatcher):
-    dp.register_message_handler(find_song_by_words, Text("🎵 Найти песню по словам"))
+    dp.register_message_handler(find_song_by_words, Text("🎵 Найти песню по словам"),
+                                state="*")
     dp.register_message_handler(get_text_to_find_song, content_types=ContentType.TEXT,
                                 state=JammyMusicStates.find_music_by_words)
     dp.register_message_handler(get_unknown_content_to_find_song, content_types=ContentType.ANY,
