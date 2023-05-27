@@ -634,7 +634,6 @@ async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, 
         else:
             await data["msg_delete_reply_markup"].delete()
             playlist = await db.select_user_playlist(int(data["playlist_id"]))
-            print(playlist)
             if not playlist:
                 await playlist_pg.create_playlist_keyboard(message.from_user.id, db,
                                                            cur_page=data["cur_page"],
