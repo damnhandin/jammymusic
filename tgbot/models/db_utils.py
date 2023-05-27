@@ -120,6 +120,14 @@ class Database:
         sql, parameters = self.format_args(sql, parameters=kwargs)
         return await self.execute(sql, *parameters, fetchrow=True)
 
+    async def check_user_terms(self, telegram_id):
+        result: asyncpg.Record = await self.execute(
+            "SELECT accepted_terms FROM users WHERE telegram_id=$1;", telegram_id,
+            fetchrow=True)
+        if not result:
+            return False
+        return result.get("accepted_terms")
+
     async def select_user_playlists(self, telegram_id, limit, offset):
         sql = """SELECT * FROM user_playlists 
         WHERE user_telegram_id=$1

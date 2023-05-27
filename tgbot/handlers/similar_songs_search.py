@@ -12,7 +12,7 @@ from shazamio import Shazam
 async def similar_songs_search(message: types.Message):
     await JammyMusicStates.shazam_recomendation.set()
     await message.answer(
-        "Отправь мне имя исполнителя и название трека (например Моргенштерн aristocrat), а я попробую "
+        "Отправь мне имя исполнителя и название трека (например Sting - Shape of my heart), а я попробую "
         "тебе посоветовать похожее")
 
 
