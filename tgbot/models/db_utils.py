@@ -49,7 +49,8 @@ class Database:
         full_name VARCHAR(128) NOT NULL,
         username VARCHAR(36) NULL,
         telegram_id BIGINT NOT NULL UNIQUE,
-        registration_date DATE NOT NULL
+        registration_date DATE NOT NULL,
+        accepted_terms BOOL NOT NULL
         );
         """
 
@@ -142,6 +143,10 @@ class Database:
         sql = "SELECT * FROM track_playlist WHERE playlist_id=$1;"
         return await self.execute(sql, playlist_id, fetch=True)
 
+    async def user_accepted_cond_terms(self, telegram_id):
+        await self.execute("UPDATE users SET accepted_terms=True "
+                           "WHERE telegram_id=$1;", telegram_id, execute=True)
+
     async def add_track_into_playlist(self, user_telegram_id, track_id, track_title, playlist_id):
         if type(playlist_id) is not int:
             playlist_id = int(playlist_id)
@@ -191,10 +196,18 @@ class Database:
         sql = "INSERT INTO tracks (file_id) VALUES ($1);"
         await self.execute(sql, audio_id, execute=True)
 
-    async def add_user(self, full_name, username, telegram_id, registration_date):
-        sql = "INSERT INTO users (full_name, username, telegram_id, registration_date) " \
-              "VALUES($1, $2, $3, $4)"
-        await self.execute(sql, full_name, username, telegram_id, registration_date, fetchrow=True)
+    async def add_user(self, full_name, username, telegram_id, registration_date, accepted_terms):
+        # CREATE TABLE IF NOT EXISTS users(
+        # id SERIAL PRIMARY KEY,
+        # full_name VARCHAR(128) NOT NULL,
+        # username VARCHAR(36) NULL,
+        # telegram_id BIGINT NOT NULL UNIQUE,
+        # registration_date DATE NOT NULL,
+        # accepted_terms BOOL NOT NULL
+        sql = "INSERT INTO users (full_name, username, telegram_id, registration_date, accepted_terms) " \
+              "VALUES($1, $2, $3, $4, $5) RETURNING *"
+        return await self.execute(sql, full_name, username, telegram_id, registration_date, accepted_terms,
+                                  fetchrow=True)
 
     async def update_data_in_db(self, data: dict):
         sql = "UPDATE users SET "
