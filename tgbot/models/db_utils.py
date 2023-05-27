@@ -248,11 +248,13 @@ class Database:
         # ON tp.track_id = tp2.track_id
         # WHERE tp.playlist_id=$1 AND tp.track_id = tp2.track_id;""",
         #                    playlist_id, song_number - 1, execute=True)
+        res = await self.execute("SELECT track_id FROM track_playlist OFFSET $1 LIMIT 1", song_number - 1, fetchrow=True)
         await self.execute("""
         DELETE FROM track_playlist
         WHERE playlist_id = $1 AND track_id = (
             SELECT track_id
             FROM track_playlist
+            WHERE playlist_id = $1
             OFFSET $2
             LIMIT 1);""",
                            playlist_id, song_number - 1, execute=True)
