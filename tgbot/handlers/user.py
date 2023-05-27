@@ -41,7 +41,19 @@ async def delete_this_cq_message(cq: types.CallbackQuery):
     await cq.message.delete()
 
 
-async def user_start(message: types.Message):
+async def user_start(message: types.Message, db: Database):
+    user = await db.select_user(telegram_id=message.from_user.id)
+    if not user:
+        user = await db.add_user(message.from_user.full_name, message.from_user.username,
+                                 message.from_user.id, message.date, False)
+    if user["accepted_terms"] is False:
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Принять лиц. соглашение",
+                                  callback_data=action_callback.new(cur_action="accept_conditional_terms"))]
+        ])
+        await message.answer("Для того чтобы использовать бота, необходимо принять лицензионное соглашение",
+                             reply_markup=reply_markup)
+        return
     await message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
                          reply_markup=start_keyboard)
 
@@ -158,7 +170,6 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
                               ))]
     ])
     state_name = await state.get_state()
-    print(f"{state_name=}")
     if state_name == JammyMusicStates.get_playlist_title.state:
         if msg_to_edit:
             if msg_to_edit.caption:
@@ -281,9 +292,7 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
 
 
 async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
-    print(callback_data)
     if cq.message.audio:
-        print(cq.message.audio)
         try:
             audio_title = cq.message.audio.title if cq.message.audio.title else cq.message.audio.file_name
             await db.add_track_into_playlist(cq.from_user.id, cq.message.audio.file_id,
@@ -326,7 +335,6 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
                     if counter != 0:
                         await cq.message.answer_media_group(media_group)
         else:
-            print(1)
             playlist = await db.select_user_playlist(callback_data["playlist_id"])
             try:
                 msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id,
@@ -533,7 +541,6 @@ async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: Playlist
 
 async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, playlist_pg: PlaylistPaginator, db):
     cur_page = int(callback_data["cur_page"])
-    print(f"{cur_page=}")
     reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, cur_page=cur_page,
                                                               cur_mode=callback_data["cur_mode"], check_cur_page=True)
     await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
@@ -623,7 +630,6 @@ async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, 
         return
     else:
         await state.reset_state()
-        print(type(data["playlist_id"]))
         try:
             await db.delete_song_from_user_playlist(message.from_user.id, int(data["playlist_id"]), number_song)
         except PlaylistNotFound:
@@ -647,6 +653,15 @@ async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, 
 
 async def get_unknown_content_to_delete_song_func(message):
     await message.answer("Похоже мы получили от вас неизвестный файл, вместо номера песни, которую хотите удалить.")
+
+
+async def reset_state_delete_reply(cq: types.CallbackQuery, state):
+    await state.reset_state()
+    try:
+        await cq.message.delete_reply_markup()
+        await cq.answer("Отменено")
+    except:
+        pass
 
 
 def register_user(dp: Dispatcher):
@@ -708,3 +723,6 @@ def register_user(dp: Dispatcher):
                                 content_types=ContentType.TEXT, state=JammyMusicStates.get_number_of_song_to_delete)
     dp.register_message_handler(get_unknown_content_to_delete_song_func,
                                 content_types=ContentType.ANY, state=JammyMusicStates.get_number_of_song_to_delete)
+    dp.register_callback_query_handler(reset_state_delete_reply,
+                                       action_callback.filter(cur_action="reset_state_delete_reply"),
+                                       state="*")

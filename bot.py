@@ -9,6 +9,7 @@ from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin
+from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.echo import register_echo
 from tgbot.handlers.find_song import register_find_song
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
@@ -26,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 async def init_db(db: Database):
-    # await db.drop_users()
-    # await db.drop_track_playlist()
-    # await db.drop_user_playlists()
-    # await db.drop_videos()
+    await db.drop_users()
+    await db.drop_track_playlist()
+    await db.drop_user_playlists()
+    await db.drop_videos()
 
     await db.create_table_users()
     await db.create_table_user_playlists()
@@ -56,16 +57,17 @@ def register_all_filters(dp):
 def register_all_handlers(dp):
     register_admin(dp)
     register_user(dp)
-    register_similar_songs_search(dp)  # Эту функцию нужно реализовать
-    register_shazam(dp)  # Эту функцию нужно реализовать
-    register_find_lyrics(dp)  # Эту функцию нужно реализовать
-    register_find_song_by_words(dp)  # Эту функцию нужно реализовать
+    register_similar_songs_search(dp)
+    register_shazam(dp)
+    register_find_lyrics(dp)
+    register_find_song_by_words(dp)
     register_add_own_music(dp)
-    register_find_song(dp)  # Эту функцию нужно реализовать
+    register_find_song(dp)
 
     register_search_music(dp)
+    register_conditional_terms_handlers(dp)
 
-    register_echo(dp)
+    # register_echo(dp)
 
 
 async def main():
