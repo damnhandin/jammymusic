@@ -23,13 +23,15 @@ async def get_lyrics(message: types.Message, config: Config, state):
                 await message.answer(m[x:x + 4095])
         else:
             await message.answer(result.lyrics)
-    except Exception:
+    except Exception as exc:
         await message.answer("К сожалению, нам не удалось найти текст данной песни")
+        raise exc
 
 
 async def get_unknown_content_to_find_lyrics(message: types.Message):
     await message.answer("Похоже, что вы хотели найти текст песни, но мы получили от вас неизвестный формат файла, "
                          "пожалуйста, убедитесь в том, что вы действительно отправили только текст.")
+                         
 
 def register_find_lyrics(dp: Dispatcher):
     dp.register_message_handler(find_lyrics, Text("📄 Найти текст песни"))

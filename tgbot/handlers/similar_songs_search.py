@@ -19,7 +19,6 @@ async def shazam_recomendation_search(message: types.Message, state):
     try:
         tracks = await shazam.search_track(query=message.text, limit=5)
         print(tracks)
-        list = {}
         if tracks:
             count_of_finded_songs = len(tracks['tracks']['hits'])
             for i in range(count_of_finded_songs):
