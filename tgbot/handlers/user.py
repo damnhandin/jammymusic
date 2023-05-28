@@ -87,7 +87,6 @@ async def run_blocking_io(func, *args):
 
 
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Database):
-    await cq.answer("Ищем информацию по данному запросу!")
     video = await db.select_video_by_id(callback_data["video_id"])
     if not video:
         await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
@@ -103,13 +102,11 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
         return
-    # if audio_stream.last().filesize > 52428800:
-    #     audio: Stream = audio_stream.first()
-    #     if audio.filesize > 52428800:
-    #         await cq.answer('Размер аудио слишком большой, невозможно отправить')
-    #         return
-    # else:
-    #     audio: Stream = audio_stream.last()
+    if audio.filesize > 50000000:
+        await cq.answer('Размер аудио слишком большой, невозможно отправить')
+        return
+    await cq.answer("Ищем информацию по данному запросу!")
+
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("Добавить в мои плейлисты",
                               callback_data=action_callback.new(cur_action="add_to_playlist"))]
