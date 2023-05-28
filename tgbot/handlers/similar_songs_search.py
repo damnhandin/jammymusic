@@ -56,8 +56,6 @@ async def get_unknown_content_to_find_similar(message: types.Message):
 
 
 def register_similar_songs_search(dp: Dispatcher):
-    dp.register_message_handler(similar_songs_search, Text("🎼 Найти похожие треки"),
-                                state="*")
     dp.register_message_handler(shazam_recommendation_search, content_types=ContentType.TEXT,
                                 state=JammyMusicStates.shazam_recomendation)
     dp.register_message_handler(get_unknown_content_to_find_similar, content_types=ContentType.ANY,

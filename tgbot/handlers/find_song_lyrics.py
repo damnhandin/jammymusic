@@ -40,8 +40,6 @@ async def get_unknown_content_to_find_lyrics(message: types.Message):
                          
 
 def register_find_lyrics(dp: Dispatcher):
-    dp.register_message_handler(find_lyrics, Text("📄 Найти текст песни"),
-                                state="*")
     dp.register_message_handler(get_lyrics, content_types=ContentType.TEXT,
                                 state=JammyMusicStates.find_lyrics)
     dp.register_message_handler(get_unknown_content_to_find_lyrics, content_types=ContentType.ANY,

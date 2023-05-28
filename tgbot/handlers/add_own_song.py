@@ -32,8 +32,6 @@ async def get_unknown_content_add_own_song_state(message):
 
 
 def register_add_own_music(dp: Dispatcher):
-    dp.register_message_handler(add_own_song_func, Text("😎 Добавить свой трек"),
-                                state="*")
     dp.register_message_handler(get_own_song_to_add, state=JammyMusicStates.add_own_song,
                                 content_types=ContentType.AUDIO)
     dp.register_message_handler(get_unknown_content_add_own_song_state, state=JammyMusicStates.add_own_song,

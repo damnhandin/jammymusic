@@ -687,7 +687,6 @@ async def reset_state_delete_reply(cq: types.CallbackQuery, state):
 def register_user(dp: Dispatcher):
     dp.register_message_handler(user_start, CommandStart())
     dp.register_message_handler(user_start_with_state, CommandStart(), state="*")
-    dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"), state="*")
     dp.register_callback_query_handler(create_playlist, playlist_navg_callback.filter(cur_action="create_playlist"))
     dp.register_message_handler(get_playlist_title_and_set, state=[JammyMusicStates.get_playlist_title,
                                 JammyMusicStates.get_new_playlist_title],

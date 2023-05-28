@@ -9,7 +9,8 @@ from shazamio import Shazam
 from tgbot.handlers.user import run_blocking_io
 
 
-async def shazam_start_func(message: types.Message):
+async def shazam_start_func(message: types.Message, state):
+    await state.reset_state()
     await message.answer("Отправь мне голосовое сообщение, а я постараюсь узнать трек")
 
 
@@ -28,6 +29,4 @@ async def shazam_get_voice_message(message: types.Message):
 
 
 def register_shazam(dp: Dispatcher):
-    dp.register_message_handler(shazam_start_func, Text("🎙 Shazam"),
-                                state="*")
     dp.register_message_handler(shazam_get_voice_message, content_types=ContentType.VOICE)
