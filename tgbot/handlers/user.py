@@ -328,7 +328,7 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
                                       callback_data=action_callback.new(cur_action="add_to_playlist"))]
             ])
             try:
-                await cq.message.edit_caption("Трек был успешно добавлен\nБольше музыки на @jammy_music_bot",
+                await cq.message.edit_caption("<b>Трек был успешно добавлен</b>\nБольше музыки на @jammy_music_bot",
                                               reply_markup=reply_markup)
             except:
                 pass

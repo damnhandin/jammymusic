@@ -21,7 +21,8 @@ async def get_lyrics(message: types.Message, config: Config, state):
         lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
         result = lyrics_genius.search_song(message.text)
         if not result:
-            raise SongNotFound
+            await message.answer("Песня не было найдена")
+            return
         song_text = result.lyrics
         if len(song_text) > 4095:
             for num_of_msgs in range(ceil(len(song_text) / 4096)):
