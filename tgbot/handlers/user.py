@@ -18,6 +18,7 @@ from tgbot.keyboards.callback_datas import action_callback, playlist_callback, v
 from tgbot.keyboards.inline import confirm_start_keyboard, accept_terms_keyboard
 from tgbot.keyboards.reply import start_keyboard
 from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber
+from tgbot.misc.misc_funcs import delete_all_messages_from_data
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
@@ -55,7 +56,9 @@ async def user_start(message: types.Message, db: Database, config: Config):
 
 
 async def my_playlists(message: types.Message, playlist_pg, state, db: Database):
+    data = await state.get_data()
     await state.reset_state()
+    await delete_all_messages_from_data(data)  # fun function
     reply_markup = await playlist_pg.create_playlist_keyboard(message.from_user.id,
                                                               db, add_track_mode=bool(message.audio))
     await message.answer('<b>Ваши плейлисты:</b>', reply_markup=reply_markup)
@@ -285,6 +288,27 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
     msg_text += "\n".join(f"{num_track}) {track['track_title']}" for num_track, track in enumerate(tracks,
                                                                                                    start=1))
     return msg_text, reply_markup
+
+
+async def generate_edit_menu_text_message(db, playlist, playlist_id, user_telegram_id, msg_text=None):
+    if msg_text is None:
+        msg_text = f"📝<b>Название:</b>\n{playlist['playlist_title']}\n\n" \
+                   f"🎶<b>Плейлист:</b>\n"
+    try:
+        tracks = await db.select_user_tracks_from_playlist(user_telegram_id, playlist_id)
+    except PlaylistNotFound:
+        raise PlaylistNotFound
+    msg_text = await format_tracks_to_numerated_list(tracks, msg_text=msg_text)
+
+    return msg_text
+
+
+async def format_tracks_to_numerated_list(tracks, msg_text=None):
+    if msg_text is None:
+        msg_text = ""
+    msg_text += "\n".join(f"{num_track}) {track['track_title']}" for num_track, track in enumerate(tracks,
+                                                                                                   start=1))
+    return msg_text
 
 
 async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
@@ -592,7 +616,7 @@ async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, sta
                                   cur_page=callback_data["cur_page"]
                               ))]
     ])
-    msg_delete_reply_markup = await cq.message.edit_text(
+    msg_delete_reply_markup = await cq.message.answer(
         "<b>Введите номер трека, который хотите удалить:</b>", reply_markup=reply_markup)
     cur_page = callback_data["cur_page"]
     playlist_id = callback_data["playlist_id"]
