@@ -5,7 +5,7 @@ import asyncio
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import CommandStart, Text
+from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
 from aiogram.utils.exceptions import MessageNotModified
@@ -143,11 +143,13 @@ async def create_playlist(cq: types.CallbackQuery, callback_data, state):
             cur_page=callback_data["cur_page"], cur_mode=callback_data["cur_mode"],
             cur_action="cancel_playlist"))]
     ])
-    if cq.message.caption:
-        await cq.message.edit_caption("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
-    else:
-        await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
-
+    try:
+        if cq.message.caption:
+            await cq.message.edit_caption("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
+        else:
+            await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def get_playlist_title_and_set(message: types.Message, config: Config, state: FSMContext, db):
     if len(message.text) >= config.misc.playlist_title_length_limit:
@@ -171,12 +173,16 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
     state_name = await state.get_state()
     if state_name == JammyMusicStates.get_playlist_title.state:
         if msg_to_edit:
-            if msg_to_edit.caption:
-                await msg_to_edit.edit_caption(f"Создать плейлист с названием: <b>{message.text}</b>?",
-                                               reply_markup=reply_markup)
-            else:
-                await msg_to_edit.edit_text(f"Создать плейлист с названием: <b>{message.text}</b>?",
-                                            reply_markup=reply_markup)
+            try:
+                if msg_to_edit.caption:
+                    await msg_to_edit.edit_caption(f"Создать плейлист с названием: <b>{message.text}</b>?",
+                                                   reply_markup=reply_markup)
+                else:
+                    await msg_to_edit.edit_text(f"Создать плейлист с названием: <b>{message.text}</b>?",
+                                                reply_markup=reply_markup)
+            except MessageNotModified:
+                pass
+
         else:
             await message.answer(f"Создать плейлист с названием: <b>{message.text}</b>?", reply_markup=reply_markup)
         try:
@@ -190,8 +196,11 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
             await state.reset_state()
             return
         if msg_to_edit:
-            await msg_to_edit.edit_text(f"Изменить название на <b>{message.text}</b>?",
-                                        reply_markup=reply_markup)
+            try:
+                await msg_to_edit.edit_text(f"Изменить название на <b>{message.text}</b>?",
+                                            reply_markup=reply_markup)
+            except MessageNotModified:
+                pass
         else:
             await message.answer(f"Изменить название на <b>{message.text}</b>?",
                                  reply_markup=reply_markup)
@@ -208,25 +217,29 @@ async def confirm_creation_playlist(cq: types.CallbackQuery, playlist_pg, state:
         return
     await db.add_new_playlist(cq.from_user.id, playlist_title)
     reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, add_track_mode=bool(cq.message.audio))
-    if cq.message.caption:
-        await cq.message.edit_caption(previous_message if previous_message else "<b>Ваши плейлисты:</b>",
-                                      reply_markup=reply_markup)
-    else:
-        await cq.message.edit_text(previous_message if previous_message else "<b>Ваши плейлисты:</b>",
-                                   reply_markup=reply_markup)
-
+    try:
+        if cq.message.caption:
+            await cq.message.edit_caption(previous_message if previous_message else "<b>Ваши плейлисты:</b>",
+                                          reply_markup=reply_markup)
+        else:
+            await cq.message.edit_text(previous_message if previous_message else "<b>Ваши плейлисты:</b>",
+                                       reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def cancel_creation_playlist(cq, playlist_pg, callback_data, state, db):
     await state.reset_state(with_data=False)
     reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db,
                                                               add_track_mode=bool(cq.message.audio))
-    if cq.message.audio:
-        await cq.message.edit_caption("<b>Ваши плейлисты:</b>",
-                                      reply_markup=reply_markup)
-    else:
-        await cq.message.edit_text("<b>Ваши плейлисты:</b>",
-                                   reply_markup=reply_markup)
-
+    try:
+        if cq.message.audio:
+            await cq.message.edit_caption("<b>Ваши плейлисты:</b>",
+                                          reply_markup=reply_markup)
+        else:
+            await cq.message.edit_text("<b>Ваши плейлисты:</b>",
+                                       reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def cancel_playlist_func(cq: types.CallbackQuery, callback_data, playlist_pg, db, state):
     await state.reset_state()
@@ -247,8 +260,10 @@ async def cancel_playlist_func(cq: types.CallbackQuery, callback_data, playlist_
         except KeyError:
             await cq.message.delete_reply_markup()
             return
-        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
-
+        try:
+            await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+        except MessageNotModified:
+            pass
 
 async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur_page=1):
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
@@ -363,8 +378,10 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
             except PlaylistNotFound:
                 await cq.answer("Плейлист не был найден")
                 return
-            await cq.message.edit_text(msg_text, reply_markup=reply_markup)
-
+            try:
+                await cq.message.edit_text(msg_text, reply_markup=reply_markup)
+            except MessageNotModified:
+                pass
 
 async def page_navigation(cq, callback_data, playlist_pg: PlaylistPaginator, db: Database):
     count_of_pages = await playlist_pg.count_of_amount_pages_of_user_playlist(cq.from_user.id, db)
@@ -415,8 +432,11 @@ async def change_playlist_title(cq: types.CallbackQuery, state, callback_data, d
             cur_action="back_to_edit_menu",
             cur_page=callback_data["cur_page"]))]
     ])
-    msg_to_edit = await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
-    await state.update_data(msg_to_edit=msg_to_edit, playlist_id=callback_data["playlist_id"])
+    try:
+        msg_to_edit = await cq.message.edit_text("<b>Введите название для плейлиста:</b>", reply_markup=reply_markup)
+        await state.update_data(msg_to_edit=msg_to_edit, playlist_id=callback_data["playlist_id"])
+    except MessageNotModified:
+        pass
 
 
 async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
@@ -450,11 +470,13 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
         await cq.answer("Плейлист не был найден")
         return
     msg_to_edit = callback_data.get("msg_to_edit")
-    if msg_to_edit:
-        await msg_to_edit.edit_text(msg_text, reply_markup=reply_markup)
-    else:
-        await cq.message.answer(msg_text, reply_markup=reply_markup)
-
+    try:
+        if msg_to_edit:
+            await msg_to_edit.edit_text(msg_text, reply_markup=reply_markup)
+        else:
+            await cq.message.answer(msg_text, reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, db):
     if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
@@ -473,8 +495,11 @@ async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, d
             cur_action="back_to_edit_menu",
             cur_page=callback_data["cur_page"]))]
     ])
-    msg_to_delete = await cq.message.edit_text("<b>Пришлите песню для добавления:</b>", reply_markup=reply_markup)
-    await state.update_data(msg_to_delete=msg_to_delete, playlist_id=callback_data["playlist_id"])
+    try:
+        msg_to_delete = await cq.message.edit_text("<b>Пришлите песню для добавления:</b>", reply_markup=reply_markup)
+        await state.update_data(msg_to_delete=msg_to_delete, playlist_id=callback_data["playlist_id"])
+    except MessageNotModified:
+        pass
     # reply_markup = InlineKeyboardMarkup(inline_keyboard=[
     #     [InlineKeyboardButton("❌Отменить",
     #                           callback_data=playlist_action.new(playlist_id=,
@@ -535,8 +560,10 @@ async def delete_playlist(cq: types.CallbackQuery, callback_data, state, db):
                                   cur_page=callback_data["cur_page"]
                               ))]
     ])
-    await cq.message.edit_text("<b>Вы действительно хотите удалить плейлист?</b>", reply_markup=reply_markup)
-
+    try:
+        await cq.message.edit_text("<b>Вы действительно хотите удалить плейлист?</b>", reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: PlaylistPaginator,
                                   state, callback_data, db: Database):
@@ -552,19 +579,26 @@ async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: Playlist
     try:
         await db.delete_user_playlist(cq.from_user.id, int(callback_data["playlist_id"]))
     except PlaylistNotFound:
-        await cq.message.edit_text("Плейлист не был найден")
+        try:
+            await cq.message.edit_text("Плейлист не был найден")
+        except MessageNotModified:
+            pass
         return
     reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, cur_page=callback_data["cur_page"],
                                                               cur_mode="edit_mode", edit_mode=True, check_cur_page=True)
-    await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
-
+    try:
+        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def back_to_playlist_menu(cq: types.CallbackQuery, state, callback_data, playlist_pg: PlaylistPaginator, db):
     cur_page = int(callback_data["cur_page"])
     reply_markup = await playlist_pg.create_playlist_keyboard(cq.from_user.id, db, cur_page=cur_page,
                                                               cur_mode=callback_data["cur_mode"], check_cur_page=True)
-    await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
-
+    try:
+        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg, state, db: Database):
     await state.reset_state()
@@ -586,12 +620,17 @@ async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg,
             cur_mode="edit_mode",
             edit_mode=True,
             check_cur_page=True)
-        await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+        try:
+            await cq.message.edit_text("<b>Ваши плейлисты:</b>", reply_markup=reply_markup)
+        except MessageNotModified:
+            pass
         return
     msg_text, reply_markup = await generate_edit_playlist_msg(playlist, cq.from_user.id, callback_data["playlist_id"],
                                                               db, cur_page=callback_data["cur_page"])
-    await cq.message.edit_text(msg_text, reply_markup=reply_markup)
-
+    try:
+        await cq.message.edit_text(msg_text, reply_markup=reply_markup)
+    except MessageNotModified:
+        pass
 
 async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
     if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
