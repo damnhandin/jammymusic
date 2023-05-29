@@ -5,7 +5,7 @@ from aiogram.dispatcher.filters import Text
 
 async def find_song_func(message: types.Message, state: FSMContext):
     await state.reset_state()
-    await message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио")
+    await message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.")
 
 
 

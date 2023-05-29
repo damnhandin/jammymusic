@@ -34,7 +34,7 @@ async def user_confirm_start(cq, state):
         await cq.message.delete()
     except:
         pass
-    await cq.message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
+    await cq.message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
                             reply_markup=start_keyboard)
 
 
@@ -51,7 +51,7 @@ async def user_start(message: types.Message, db: Database, config: Config):
         await message.answer("Для того чтобы использовать бота, необходимо принять пользовательское соглашение")
         await message.answer(config.terms.cond_terms_text, reply_markup=accept_terms_keyboard)
         return
-    await message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
+    await message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
                          reply_markup=start_keyboard)
 
 
