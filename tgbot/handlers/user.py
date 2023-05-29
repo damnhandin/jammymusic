@@ -8,7 +8,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
-from aiogram.utils.exceptions import MessageNotModified
+from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
 from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 
@@ -107,8 +107,10 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     if audio.filesize > 50000000:
         await cq.answer('Размер аудио слишком большой, невозможно отправить')
         return
-    await cq.answer("Ищем информацию по данному запросу!")
-
+    try:
+        await cq.answer("Ищем информацию по данному запросу!")
+    except InvalidQueryID:
+        await cq.message.answer("Ищем информацию по данному запросу!")
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("Добавить в мои плейлисты",
                               callback_data=action_callback.new(cur_action="add_to_playlist"))]
