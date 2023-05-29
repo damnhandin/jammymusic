@@ -95,6 +95,8 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     if not yt_video:
         await cq.message.answer('Произошла ошибка!')
         return
+
+
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
@@ -116,6 +118,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     await run_blocking_io(audio.stream_to_buffer, audio_file)
     await run_blocking_io(audio_file.seek, 0)
     await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
+                                  performer=yt_video.author if yt_video.author else None,
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
     try:
         await cq.message.delete()
