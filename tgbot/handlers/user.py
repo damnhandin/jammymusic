@@ -87,11 +87,16 @@ async def run_blocking_io(func, *args):
 
 
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Database):
-    video = await db.select_video_by_id(callback_data["video_id"])
-    if not video:
+    video_id = callback_data["video_id"]
+    if not video_id:
         await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
         return
-    yt_video = YouTube(video["link"])
+    yt_link = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        yt_video = YouTube(yt_link)
+    except:
+        yt_link = f"https://music.youtube.com/watch?v={video_id}"
+        yt_video = YouTube(yt_link)
     if not yt_video:
         await cq.message.answer('Произошла ошибка!')
         return
