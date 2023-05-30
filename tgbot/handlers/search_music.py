@@ -65,7 +65,7 @@ async def search_music_func(mes: types.Message, db: Database, config: Config):
     yt = YTMusic()
     video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
     search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
-    search_results += yt.search(mes.text, filter="songs", limit=3)[:3]
+    search_results += (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:3]
     if not search_results:
         await mes.answer("Никаких совпадений по запросу.")
         return
