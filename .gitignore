@@ -68,3 +68,8 @@ download_cash/*
 ffmpeg.exe
 ffprobe.exe
 ffplay.exe
+# misc
+bot.conf
+jammyvenv
+log_file_err.log
+logfile.log
