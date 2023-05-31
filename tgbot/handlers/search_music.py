@@ -62,10 +62,10 @@ async def search_music_func(mes: types.Message, db: Database, config: Config):
     except Exception:
         pass
     # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
-    yt = YTMusic()
+    yt: YTMusic = YTMusic()
     video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
-    search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
-    search_results += (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
+    search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
+    search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
     if not search_results:
         await mes.answer("Никаких совпадений по запросу.")
         return
