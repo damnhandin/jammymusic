@@ -7,6 +7,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
 from aiogram.types import ContentType
 from lyricsgenius.song import Song
+from ytmusicapi import YTMusic
 
 from tgbot.handlers.user import run_cpu_bound
 from tgbot.misc.exceptions import SongNotFound
@@ -28,8 +29,16 @@ def remove_pattern_from_string(text, pattern):
 async def get_lyrics(message: types.Message, config: Config, state):
     await state.reset_state()
     try:
+        tracks: list[dict] = YTMusic().search(query=message.text, filter="songs", limit=1)
+        if not tracks:
+            song_title = message.text
+            song_artists = ""
+        else:
+            track = tracks[0]
+            song_title = track["title"]
+            song_artists = ", ".join([artist.get("name") for artist in track.get("artists")])
         lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
-        result: Song = lyrics_genius.search_song(message.text)
+        result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists if song_artists else "")
         if not result:
             await message.answer("Песня не было найдена")
             return
@@ -37,8 +46,10 @@ async def get_lyrics(message: types.Message, config: Config, state):
         try:
             # song_text = result.lyrics[result.lyrics.find("Contributors") + 12:]
             # await message.answer(song_text)
-            lyrics_start_index = result.lyrics.find('Lyrics[')
-            song_text = f"{result.lyrics[lyrics_start_index:]}"
+            song_text = result.lyrics
+            lyrics_start_index = song_text.find('Lyrics')
+            if lyrics_start_index != -1:
+                song_text = f"{song_text[lyrics_start_index + 6:]}"
             song_text = await run_cpu_bound(remove_pattern_from_string, song_text, r'\d*Embed$')
         except:
             song_text = result.lyrics
