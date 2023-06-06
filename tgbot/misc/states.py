@@ -11,3 +11,5 @@ class JammyMusicStates(StatesGroup):
     find_lyrics = State()
     shazam_recomendation = State()
     admin_sending = State()
+
+    donate = State()

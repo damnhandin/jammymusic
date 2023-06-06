@@ -17,6 +17,7 @@ class TgBot:
     genius_token: str
     admin_ids: list[int]
     use_redis: bool
+    payment_token: str
 
 
 @dataclass
@@ -35,6 +36,7 @@ class Config:
     misc: Miscellaneous
     terms: Terms
 
+
 def load_config(path: str = None):
     env = Env()
     env.read_env(path)
@@ -44,7 +46,8 @@ def load_config(path: str = None):
             token=env.str("BOT_TOKEN"),
             admin_ids=list(map(int, env.list("ADMINS"))),
             use_redis=env.bool("USE_REDIS"),
-            genius_token=env.str("GENIUS_TOKEN")
+            genius_token=env.str("GENIUS_TOKEN"),
+            payment_token=env.str("PAYMENT_TOKEN")
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),
