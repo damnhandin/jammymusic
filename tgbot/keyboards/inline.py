@@ -12,3 +12,9 @@ accept_terms_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Принять лиц. соглашение",
                                   callback_data=action_callback.new(cur_action="accept_conditional_terms"))]
         ])
+subscription_prices_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Купить 1 месяц - 69 рублей",
+                          callback_data=action_callback.new(cur_action="confirm_to_start_menu"))],
+    [InlineKeyboardButton(text="Купить 2 месяца - 99 рублей",
+                          callback_data=action_callback.new(cur_action="cancel_to_start_menu"))],
+])
