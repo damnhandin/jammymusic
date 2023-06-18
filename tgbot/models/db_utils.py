@@ -56,6 +56,19 @@ class Database:
 
         await self.execute(sql, execute=True)
 
+    async def create_table_users_subcription(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS subcriptions(
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT NOT NULL UNIQUE,
+        subcription_date_start DATE,
+        subcription_date_end DATE,
+        signed BOOL NOT NULL
+        );
+        """
+
+        await self.execute(sql, execute=True)
+
     async def create_table_videos(self):
         # self.id, self.link, self.title, self.channel, self.duration
         sql = """
@@ -237,6 +250,22 @@ class Database:
         if int((result.split())[1]) != 1:
             raise PlaylistNotFound
 
+    async def check_user_subscription(self, telegram_id):
+        result: asyncpg.Record = await self.execute(
+            "SELECT signed FROM users WHERE telegram_id=$1;", telegram_id,
+            fetchrow=True)
+        if not result:
+            return False
+        return result.get("signed")
+
+    async def check_user_date_end(self, telegram_id):
+        result: asyncpg.Record = await self.execute(
+            "SELECT subcription_date_end FROM users WHERE telegram_id=$1;", telegram_id,
+            fetchrow=True)
+        if not result:
+            return False
+        return result.get("subcription_date_end")
+
     async def delete_song_from_user_playlist(self, user_telegram_id, playlist_id, song_number):
         result = await self.execute("SELECT * FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2",
                                     playlist_id, user_telegram_id, fetchrow=True)
@@ -251,8 +280,6 @@ class Database:
             OFFSET $2
             LIMIT 1);""",
                            playlist_id, song_number - 1, execute=True)
-
-
 
     async def delete_users(self):
         await self.execute("DELETE FROM users WHERE TRUE", execute=True)

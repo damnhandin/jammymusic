@@ -16,6 +16,7 @@ from tgbot.handlers.payment import register_payment
 from tgbot.handlers.search_music import register_search_music
 from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
+from tgbot.handlers.subscription import register_subcription
 from tgbot.handlers.text_button_registration import text_button_registration
 from tgbot.handlers.user import register_user
 from tgbot.middlewares.environment import EnvironmentMiddleware
@@ -33,6 +34,7 @@ async def init_db(db: Database):
     # await db.drop_videos()
 
     await db.create_table_users()
+    await db.create_table_users_subcription()
     await db.create_table_user_playlists()
     await db.create_table_videos()
     await db.create_table_track_playlist()
@@ -69,6 +71,7 @@ def register_all_handlers(dp):
     register_conditional_terms_handlers(dp)
 
     register_payment(dp)
+    register_subcription(dp)
     # register_echo(dp)
 
 
