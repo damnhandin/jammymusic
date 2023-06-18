@@ -1,19 +1,23 @@
-from aiogram import types, Dispatcher
+from aiogram import Dispatcher, types
 from aiogram.types import ContentType
 
-from tgbot.config import Config
-import bot
 from tgbot.misc.states import JammyMusicStates
 
 
-async def donate(message: types.Message):
-    await bot.Bot.send_invoice(message.chat.id, 'Премиум подписка',
-                               ' Оформление премиум подписка в @Jammymusic', 'invoice',
-                           Config.tg_bot.payment_token, 'RUB', [types.labeled_price('Премиум подписка', 30*100)])
+async def donate(message: types.Message, config):
+    title_text = "Премиум подписка"
+    desc_text = "Оформление премиум подписка в @Jammymusic"
+    await message.bot.send_invoice(chat_id=message.chat.id,
+                                   title=title_text,
+                                   description=desc_text,
+                                   payload='invoice',
+                                   provider_token=config.tg_bot.payment_token,
+                                   currency='RUB',
+                                   prices=[types.LabeledPrice('Премиум подписка', 30*100)])
 
 
 async def get_unknown_content_to_donate(message: types.Message):
-    await message.answer("Похоже, что вы хотели оплатить опдписку, но мы получили от вас нечто иное. "
+    await message.answer("Похоже, что вы хотели оплатить подписку, но мы получили от вас нечто иное. "
                          "Прошипите /start чтобы вернуться в главное меню.")
 
 

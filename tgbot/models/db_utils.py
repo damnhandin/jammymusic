@@ -28,7 +28,7 @@ class Database:
                       fetchval: bool = False,
                       fetchrow: bool = False,
                       execute: bool = False
-                      ):
+                      ) -> Union[asyncpg.Record, int, None, list]:
         async with self.pool.acquire() as connection:
             connection: Connection
             async with connection.transaction():
@@ -56,14 +56,13 @@ class Database:
 
         await self.execute(sql, execute=True)
 
-    async def create_table_users_subcription(self):
+    async def create_table_active_subscriptions(self):
         sql = """
-        CREATE TABLE IF NOT EXISTS subcriptions(
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT NOT NULL UNIQUE,
-        subcription_date_start DATE,
-        subcription_date_end DATE,
-        signed BOOL NOT NULL
+        CREATE TABLE IF NOT EXISTS active_subscriptions(
+        sub_id SERIAL PRIMARY KEY,
+        telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+        subscription_date_start DATE NOT NULL,
+        subscription_date_end DATE NOT NULL
         );
         """
 
@@ -100,7 +99,6 @@ class Database:
         """
         await self.execute(sql, execute=True)
 
-
     async def create_table_track_playlist(self):
         sql = """
         CREATE TABLE IF NOT EXISTS track_playlist (
@@ -110,7 +108,6 @@ class Database:
         );
         """
         await self.execute(sql, execute=True)
-
 
     @staticmethod
     def format_args(sql, parameters: dict):
@@ -250,21 +247,24 @@ class Database:
         if int((result.split())[1]) != 1:
             raise PlaylistNotFound
 
-    async def check_user_subscription(self, telegram_id):
-        result: asyncpg.Record = await self.execute(
-            "SELECT signed FROM users WHERE telegram_id=$1;", telegram_id,
+    async def select_user_subscription(self, telegram_id):
+        result = await self.execute(
+            "SELECT * FROM active_subscriptions WHERE telegram_id=$1;", telegram_id,
             fetchrow=True)
         if not result:
             return False
-        return result.get("signed")
+        # return result.get("signed") or False
+        return result
 
-    async def check_user_date_end(self, telegram_id):
-        result: asyncpg.Record = await self.execute(
-            "SELECT subcription_date_end FROM users WHERE telegram_id=$1;", telegram_id,
-            fetchrow=True)
+    async def check_subscription_is_valid(self, telegram_id, current_date):
+        sql = """
+        SELECT CASE WHEN $1 <= subscription_date_end THEN True ELSE False END AS status
+        FROM active_subscriptions
+        WHERE telegram_id = $2;"""
+        result = await self.execute(sql, current_date, telegram_id, fetchrow=True)
         if not result:
             return False
-        return result.get("subcription_date_end")
+        return result.get("status")
 
     async def delete_song_from_user_playlist(self, user_telegram_id, playlist_id, song_number):
         result = await self.execute("SELECT * FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2",

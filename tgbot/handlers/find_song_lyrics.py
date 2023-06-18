@@ -45,7 +45,7 @@ async def get_lyrics(message: types.Message, config: Config, state):
             result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists if song_artists else "")
             if not result:
                 await message.answer("Песня не было найдена")
-                return  
+                return
         # song_text = result.lyrics[result.lyrics.find("\n"):]
         try:
             # song_text = result.lyrics[result.lyrics.find("Contributors") + 12:]
