@@ -1,5 +1,6 @@
 from aiogram import types, Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
+from shazamio.exceptions import FailedDecodeJson
 from ytmusicapi import YTMusic
 
 from tgbot.config import Config
@@ -41,7 +42,6 @@ async def parse_all_related_tracks_to_list_from_yt_music(tracks, shazam: Shazam)
 async def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
     all_related_songs = ""
     for num, related_song in enumerate(related_songs, start=1):
-        print(related_song)
         all_related_songs += f"{num}) <code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
 
     return all_related_songs
@@ -83,7 +83,7 @@ async def find_all_youtube_songs_from_list(songs):
                 yt_music.search(f"{song.get('subtitle')} - {song.get('title')}", filter="songs", limit=1)[0])
         except (ValueError, KeyError):
             continue
-    print(yt_songs)
+
     return yt_songs
 
 
@@ -107,7 +107,7 @@ async def shazam_recommendation_search(message: types.Message, state, config: Co
         text_message += "Больше музыки на @jammy_music_bot"
         await message.answer(text_message, reply_markup=reply_markup)
 
-    except (RelatedSongsWasNotFound, KeyError, AttributeError) as exc:
+    except (RelatedSongsWasNotFound, KeyError, AttributeError, FailedDecodeJson) as exc:
         await message.answer("Я не знаю, что тебе посоветовать")
         return
 

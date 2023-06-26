@@ -29,4 +29,4 @@ async def shazam_get_voice_message(message: types.Message):
 
 
 def register_shazam(dp: Dispatcher):
-    dp.register_message_handler(shazam_get_voice_message, content_types=ContentType.VOICE)
+    dp.register_message_handler(shazam_get_voice_message, state="*", content_types=ContentType.VOICE)

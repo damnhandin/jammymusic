@@ -12,8 +12,7 @@ async def add_own_song_func(message):
     await message.answer("Пришлите свой трек")
 
 
-async def get_own_song_to_add(message: types.Message, state: FSMContext):
-    await state.reset_state()
+async def get_own_song_to_add(message: types.Message):
     audio = message.audio.file_id
     try:
         await message.delete()
@@ -32,7 +31,7 @@ async def get_unknown_content_add_own_song_state(message):
 
 
 def register_add_own_music(dp: Dispatcher):
-    dp.register_message_handler(get_own_song_to_add, state=JammyMusicStates.add_own_song,
+    dp.register_message_handler(get_own_song_to_add, state="*",
                                 content_types=ContentType.AUDIO)
     dp.register_message_handler(get_unknown_content_add_own_song_state, state=JammyMusicStates.add_own_song,
                                 content_types=ContentType.ANY)
