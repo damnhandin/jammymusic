@@ -486,6 +486,7 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
     except MessageNotModified:
         pass
 
+
 async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, db):
     if not await check_if_user_playlist_is_available(callback_data["playlist_id"], db):
         await cq.answer("Плейлист недоступен")
@@ -522,15 +523,18 @@ async def delete_format_name_from_filename(filename: str):
 
 
 async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext, db: Database):
+    await state.reset_state(with_data=False)
     data = await state.get_data()
     if not await check_if_user_playlist_is_available(data["playlist_id"], db):
         await message.answer("Плейлист недоступен")
         await state.reset_state()
         return
-    await state.reset_state(with_data=False)
     playlist_id = int(data["playlist_id"])
     msg_to_delete = data["msg_to_delete"]
-    audio_title = await delete_format_name_from_filename(message.audio.file_name)
+    if message.audio.title:
+        audio_title = message.audio.title
+    else:
+        audio_title = await delete_format_name_from_filename(message.audio.file_name)
     await db.add_track_into_playlist(message.from_user.id, message.audio.file_id, audio_title, playlist_id)
     try:
         await msg_to_delete.delete()
@@ -538,6 +542,7 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
     except:
         pass
     await state.reset_data()
+    await message.answer("Трек был успешно добавлен в плейлист")
 
 async def get_unknown_content_to_add_to_playlist(message):
     await message.answer("Похоже, что вы хотели добавить аудиофайл в плейлист, но вместо этого отправили неизвестный "

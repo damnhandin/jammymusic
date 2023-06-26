@@ -8,7 +8,7 @@ from tgbot.misc.states import JammyMusicStates
 
 
 async def add_own_song_func(message):
-    await JammyMusicStates.add_own_song.set()
+    # await JammyMusicStates.add_own_song.set()
     await message.answer("Пришлите свой трек")
 
 
@@ -33,6 +33,6 @@ async def get_unknown_content_add_own_song_state(message):
 def register_add_own_music(dp: Dispatcher):
     dp.register_message_handler(get_own_song_to_add, state="*",
                                 content_types=ContentType.AUDIO)
-    dp.register_message_handler(get_unknown_content_add_own_song_state, state=JammyMusicStates.add_own_song,
-                                content_types=ContentType.ANY)
+    # dp.register_message_handler(get_unknown_content_add_own_song_state, state=JammyMusicStates.add_own_song,
+    #                             content_types=ContentType.ANY)
 
