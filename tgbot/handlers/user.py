@@ -158,6 +158,7 @@ async def create_playlist(cq: types.CallbackQuery, callback_data, state):
     except MessageNotModified:
         pass
 
+
 async def get_playlist_title_and_set(message: types.Message, config: Config, state: FSMContext, db):
     if len(message.text) >= config.misc.playlist_title_length_limit:
         msg_to_edit = await message.answer(

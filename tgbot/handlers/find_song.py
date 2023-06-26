@@ -1,6 +1,5 @@
-from aiogram import types, Dispatcher
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
 
 
 async def find_song_func(message: types.Message, state: FSMContext):

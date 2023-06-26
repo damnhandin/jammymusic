@@ -1,11 +1,10 @@
 from aiogram import types, Dispatcher
-from aiogram.dispatcher.filters import Text
-from aiogram.types import ContentType
-from lyricsgenius import genius
-from shazamio.exceptions import FailedDecodeJson
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 from ytmusicapi import YTMusic
 
 from tgbot.config import Config
+from tgbot.handlers.search_music import convert_search_results_to_reply_markup
+from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import RelatedSongsWasNotFound
 from tgbot.misc.states import JammyMusicStates
 
@@ -19,12 +18,8 @@ async def similar_songs_search(message: types.Message):
         "тебе посоветовать похожее")
 
 
-async def parse_all_related_tracks_to_text_from_yt(tracks, shazam: Shazam) -> str:
-    all_related_songs = ""
-    related_songs_flag = False
-    # end_index = len(tracks)
-    # if end_index > 5:
-    #     end_index = 5
+async def parse_all_related_tracks_to_list_from_yt_music(tracks, shazam: Shazam) -> list:
+    all_related_songs = []
     end_index = 1
     for i in range(end_index):
         track = tracks[i]
@@ -37,36 +32,59 @@ async def parse_all_related_tracks_to_text_from_yt(tracks, shazam: Shazam) -> st
             shazam_song = await shazam.search_track(song_title, limit=1)
             related_songs = await shazam.related_tracks(shazam_song["tracks"]["hits"][0]["key"], limit=8)
             related_songs = related_songs["tracks"]
+            all_related_songs += related_songs
         except KeyError:
             continue
-        for related_song in related_songs:
-            if related_songs_flag is False:
-                related_songs_flag = True
-            all_related_songs += f"<code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
-    if related_songs_flag is False:
-        raise RelatedSongsWasNotFound
-
     return all_related_songs
 
 
-async def parse_all_related_tracks_to_text(tracks, shazam: Shazam) -> str:
+async def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
     all_related_songs = ""
-    related_songs_flag = False
-    counter = 0
-    for track in tracks:
-        try:
-            related_songs = (await shazam.related_tracks(track_id=track["key"], limit=5))["tracks"]
-            if not related_songs_flag and related_songs:
-                related_songs_flag = True
-            for related_song in related_songs:
-                all_related_songs += f"{related_song['subtitle']} - {related_song['title']}\n"
-        except (KeyError, FailedDecodeJson):
-            continue
-        else:
-            counter += 1
-    if not related_songs_flag:
-        raise RelatedSongsWasNotFound
+    for num, related_song in enumerate(related_songs, start=1):
+        print(related_song)
+        all_related_songs += f"{num}) <code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
+
     return all_related_songs
+
+
+# async def parse_all_related_tracks_to_text(tracks, shazam: Shazam) -> str:
+#     all_related_songs = ""
+#     related_songs = await find_all_related_tracks_for_songs(tracks, shazam)
+#     for related_song in related_songs:
+#         try:
+#             all_related_songs += f"{related_song['subtitle']} - {related_song['title']}\n"
+#         except KeyError:
+#             continue
+#     return all_related_songs
+
+
+async def convert_yt_songs_to_enumerated_inline_buttons(yt_songs) -> InlineKeyboardMarkup:
+    reply_markup = InlineKeyboardMarkup(row_width=4)
+    for num, song in enumerate(yt_songs, start=1):
+        video_id = song.get("id") or song.get("videoId")
+        reply_markup.insert(InlineKeyboardButton(text=str(num),
+                                                 callback_data=video_callback.new(
+                                                     video_id=video_id)))
+    return reply_markup
+
+
+async def parse_all_related_tracks_to_inline_buttons(related_tracks) -> types.InlineKeyboardMarkup:
+    reply_markup = convert_search_results_to_reply_markup(related_tracks)
+
+    return reply_markup
+
+
+async def find_all_youtube_songs_from_list(songs):
+    yt_songs = []
+    yt_music = YTMusic()
+    for song in songs:
+        try:
+            yt_songs.append(
+                yt_music.search(f"{song.get('subtitle')} - {song.get('title')}", filter="songs", limit=1)[0])
+        except (ValueError, KeyError):
+            continue
+    print(yt_songs)
+    return yt_songs
 
 
 async def shazam_recommendation_search(message: types.Message, state, config: Config):
@@ -74,18 +92,20 @@ async def shazam_recommendation_search(message: types.Message, state, config: Co
     # shazam = Shazam(language="ru", endpoint_country="RU")
     shazam = Shazam()
     try:
-        # tracks = (await shazam.search_track(query=message.text, limit=5))
-        # tracks = tracks.get("tracks").get("hits")
         tracks = YTMusic().search(query=message.text, filter="songs", limit=1)
-
-        if tracks:
-            text_message = "<b>Похожие треки:</b>\n"
-            # text_message += await parse_all_related_tracks_to_text(tracks, shazam)
-            text_message += await parse_all_related_tracks_to_text_from_yt(tracks, shazam)
-            text_message += "Больше музыки на @jammy_music_bot"
-            await message.answer(text_message)
-        else:
-            await message.answer("Я не знаю, что тебе посоветовать")
+        if not tracks:
+            raise RelatedSongsWasNotFound
+        related_tracks_shazam = await parse_all_related_tracks_to_list_from_yt_music(tracks, shazam)
+        if not related_tracks_shazam:
+            raise RelatedSongsWasNotFound
+        related_tracks_yt_music = await find_all_youtube_songs_from_list(related_tracks_shazam)
+        if not related_tracks_yt_music:
+            raise RelatedSongsWasNotFound
+        reply_markup = await convert_yt_songs_to_enumerated_inline_buttons(related_tracks_yt_music)
+        text_message = "<b>Похожие треки:</b>\n"
+        text_message += await format_all_related_tracks_to_text_from_shazam(related_tracks_shazam)
+        text_message += "Больше музыки на @jammy_music_bot"
+        await message.answer(text_message, reply_markup=reply_markup)
 
     except (RelatedSongsWasNotFound, KeyError, AttributeError) as exc:
         await message.answer("Я не знаю, что тебе посоветовать")
