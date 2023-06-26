@@ -283,18 +283,3 @@ class Database:
 
     async def delete_users(self):
         await self.execute("DELETE FROM users WHERE TRUE", execute=True)
-
-    async def drop_users(self):
-        await self.execute("DROP TABLE IF EXISTS users", execute=True)
-
-    async def drop_questions(self):
-        await self.execute("DROP TABLE IF EXISTS questions", execute=True)
-
-    async def drop_user_playlists(self):
-        await self.execute("DROP TABLE IF EXISTS user_playlists", execute=True)
-
-    async def drop_videos(self):
-        await self.execute("DROP TABLE IF EXISTS videos", execute=True)
-
-    async def drop_track_playlist(self):
-        await self.execute("DROP TABLE IF EXISTS track_playlist", execute=True)

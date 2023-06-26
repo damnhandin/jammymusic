@@ -1,6 +1,7 @@
 from json import loads
 
 from aiogram import Dispatcher, types
+from aiogram.dispatcher.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from aiogram.utils.exceptions import MessageIsTooLong
 from youtubesearchpython import VideosSearch
@@ -37,11 +38,11 @@ def convert_search_results_to_reply_markup(search_results):
     for res in search_results:
         if res.get("id"):
             video_id = res.get("id")
-            cur_emoji = "📹"
+            cur_emoji = "🎵"
             song_title = res.get("title")
         else:
             video_id = res.get("videoId")
-            cur_emoji = "🎵"  # 🎶🎵
+            cur_emoji = "🎶"  # 🎶🎵
             song_artists = ", ".join([artist.get("name") for artist in res.get("artists")])
             if song_artists:
                 song_title = f"{song_artists} - {res['title']}"

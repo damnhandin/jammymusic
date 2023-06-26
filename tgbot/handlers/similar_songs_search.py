@@ -42,7 +42,7 @@ async def parse_all_related_tracks_to_text_from_yt(tracks, shazam: Shazam) -> st
         for related_song in related_songs:
             if related_songs_flag is False:
                 related_songs_flag = True
-            all_related_songs += f"{related_song['subtitle']} - {related_song['title']}\n\n"
+            all_related_songs += f"<code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
     if related_songs_flag is False:
         raise RelatedSongsWasNotFound
 
