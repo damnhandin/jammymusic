@@ -5,6 +5,7 @@ from ytmusicapi import YTMusic
 
 from tgbot.config import Config
 from tgbot.handlers.search_music import convert_search_results_to_reply_markup
+from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import RelatedSongsWasNotFound
 from tgbot.misc.states import JammyMusicStates
@@ -39,7 +40,7 @@ async def parse_all_related_tracks_to_list_from_yt_music(tracks, shazam: Shazam)
     return all_related_songs
 
 
-async def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
+def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
     all_related_songs = ""
     for num, related_song in enumerate(related_songs, start=1):
         all_related_songs += f"{num}) <code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
@@ -58,7 +59,7 @@ async def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
 #     return all_related_songs
 
 
-async def convert_yt_songs_to_enumerated_inline_buttons(yt_songs) -> InlineKeyboardMarkup:
+def convert_yt_songs_to_enumerated_inline_buttons(yt_songs) -> InlineKeyboardMarkup:
     reply_markup = InlineKeyboardMarkup(row_width=4)
     for num, song in enumerate(yt_songs, start=1):
         video_id = song.get("id") or song.get("videoId")
@@ -79,8 +80,9 @@ async def find_all_youtube_songs_from_list(songs):
     yt_music = YTMusic()
     for song in songs:
         try:
-            yt_songs.append(
-                yt_music.search(f"{song.get('subtitle')} - {song.get('title')}", filter="songs", limit=1)[0])
+            search_query = f"{song.get('subtitle')} - {song.get('title')}"
+            res = await run_blocking_io(yt_music.search, search_query, "songs", None, 1)
+            yt_songs.append(res[0])
         except (ValueError, KeyError):
             continue
 
@@ -89,6 +91,7 @@ async def find_all_youtube_songs_from_list(songs):
 
 async def shazam_recommendation_search(message: types.Message, state, config: Config):
     await state.reset_state()
+    await message.answer("Ищу похожие песни для вас")
     # shazam = Shazam(language="ru", endpoint_country="RU")
     shazam = Shazam()
     try:
@@ -101,9 +104,9 @@ async def shazam_recommendation_search(message: types.Message, state, config: Co
         related_tracks_yt_music = await find_all_youtube_songs_from_list(related_tracks_shazam)
         if not related_tracks_yt_music:
             raise RelatedSongsWasNotFound
-        reply_markup = await convert_yt_songs_to_enumerated_inline_buttons(related_tracks_yt_music)
+        reply_markup = await run_cpu_bound(convert_yt_songs_to_enumerated_inline_buttons, related_tracks_yt_music)
         text_message = "<b>Похожие треки:</b>\n"
-        text_message += await format_all_related_tracks_to_text_from_shazam(related_tracks_shazam)
+        text_message += await run_cpu_bound(format_all_related_tracks_to_text_from_shazam, related_tracks_shazam)
         text_message += "Больше музыки на @jammy_music_bot"
         await message.answer(text_message, reply_markup=reply_markup)
 
