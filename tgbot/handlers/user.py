@@ -127,10 +127,10 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data, db: Datab
     await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
                                   performer=yt_video.author if yt_video.author else None,
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
-    try:
-        await cq.message.delete()
-    except Exception:
-        pass
+    # try:
+    #     await cq.message.delete()
+    # except Exception:
+    #     pass
 
 
 async def add_to_playlist(cq: types.CallbackQuery, playlist_pg, state, db):
