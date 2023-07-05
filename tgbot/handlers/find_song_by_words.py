@@ -16,7 +16,7 @@ async def format_songs_title_to_message_text(data):
     msg_text = "<b>Результаты по вашему запросу:</b>\n"
     for item in data:
         try:
-            msg_text += f"{(item['result']['artist_names']).lstrip()} - {item['result']['title_with_featured']}\n"
+            msg_text += f"{(item['result']['artist_names'])} - {item['result']['title_with_featured']}\n"
         except KeyError:
             continue
     return msg_text

@@ -138,6 +138,7 @@ class Database:
             return False
         return result.get("accepted_terms")
 
+
     async def select_user_playlists(self, telegram_id, limit=0, offset=0):
         sql = """SELECT * FROM user_playlists 
         WHERE user_telegram_id=$1
@@ -201,8 +202,8 @@ class Database:
         user = await self.select_user(telegram_id=user_telegram_id)
         if not user:
             user = await self.add_user(full_name, username, user_telegram_id, registration_date, accepted_terms)
-            playlists = await self.select_user_playlists(user_telegram_id)
-            if len(playlists) < 1:
+            count_of_user_playlists = await self.count_of_user_playlists(user_telegram_id)
+            if count_of_user_playlists < 1:
                 await self.add_new_playlist(user_telegram_id, "Избранное")
         return user
 
