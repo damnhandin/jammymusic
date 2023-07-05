@@ -29,9 +29,6 @@ class PlaylistPaginator:
                 edit_mode = False
                 add_track_mode = False
 
-        # # check if user is exists, has valid subscription and amount of playlists
-        # # await self.__check_user_via_database(user_telegram_id, db)
-
         if check_cur_page is True:
             cur_page = await self.__check_cur_page(user_telegram_id, db, cur_page)
 
@@ -132,10 +129,3 @@ class PlaylistPaginator:
                                                   cur_page=cur_page
                                               )))
         return keyboard
-    #
-    # async def __check_user_via_database(self, user_telegram_id, db: Database):
-    #     user = await db.select_user(telegram_id=user_telegram_id)
-    #     if not user:
-    #         user_info = await self.dp.bot.get_chat_member(chat_id=user_telegram_id, user_id=user_telegram_id)
-    #         # await db.initialized_new_user()
-    #         # await db.add_new_playlist(user_telegram_id, )
