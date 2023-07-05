@@ -18,6 +18,7 @@ from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.text_button_registration import text_button_registration
 from tgbot.handlers.user import register_user
+from tgbot.middlewares.album import AlbumMiddleware
 from tgbot.middlewares.environment import EnvironmentMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
 from tgbot.models.classes.paginator import PlaylistPaginator
@@ -27,11 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 async def init_db(db: Database):
-    # await db.drop_users()
-    # await db.drop_track_playlist()
-    # await db.drop_user_playlists()
-    # await db.drop_videos()
-
     await db.create_table_users()
     await db.create_table_active_subscriptions()
     await db.create_table_user_playlists()
@@ -48,6 +44,7 @@ async def setup_database(db: Database):
 
 def register_all_middlewares(playlist_paginator, dp, config, db):
     dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
+    dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
 
 

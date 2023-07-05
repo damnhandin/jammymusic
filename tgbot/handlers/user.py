@@ -5,7 +5,7 @@ import asyncio
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import CommandStart
+from aiogram.dispatcher.filters import CommandStart, MediaGroupFilter
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
 from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
@@ -522,6 +522,32 @@ async def delete_format_name_from_filename(filename: str):
     return filename[:index]
 
 
+async def get_music_to_add_to_playlist_media_group(message: types.Message, album: list[types.Message], state, db):
+    await state.reset_state(with_data=False)
+    data = await state.get_data()
+    if not await check_if_user_playlist_is_available(data["playlist_id"], db):
+        await message.answer("Плейлист недоступен")
+        await state.reset_state()
+        return
+    for song in album:
+        playlist_id = int(data["playlist_id"])
+        if song.audio.title:
+            audio_title = song.audio.title
+        else:
+            audio_title = await delete_format_name_from_filename(song.audio.file_name)
+        await db.add_track_into_playlist(song.from_user.id, song.audio.file_id, audio_title, playlist_id)
+
+    msg_to_delete = data["msg_to_delete"]
+    try:
+        await msg_to_delete.delete()
+        await message.delete()
+    except:
+        pass
+    await state.reset_data()
+    await message.answer("Треки были успешно добавлены в плейлист, если что-то не было добавлено, убедитесь, что вы "
+                         "отправляли все песни одним сообщением")
+
+
 async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext, db: Database):
     await state.reset_state(with_data=False)
     data = await state.get_data()
@@ -543,6 +569,7 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
         pass
     await state.reset_data()
     await message.answer("Трек был успешно добавлен в плейлист")
+
 
 async def get_unknown_content_to_add_to_playlist(message):
     await message.answer("Похоже, что вы хотели добавить аудиофайл в плейлист, но вместо этого отправили неизвестный "
@@ -770,7 +797,10 @@ def register_user(dp: Dispatcher):
                                        playlist_action.filter(cur_action="change_playlist_title"))
     dp.register_callback_query_handler(add_music_to_playlist,
                                        playlist_action.filter(cur_action="add_music_to_playlist"))
-    dp.register_message_handler(get_music_to_add_to_playlist,
+    dp.register_message_handler(get_music_to_add_to_playlist, MediaGroupFilter(is_media_group=False),
+                                content_types=ContentType.AUDIO,
+                                state=JammyMusicStates.add_music_to_playlist)
+    dp.register_message_handler(get_music_to_add_to_playlist_media_group,  MediaGroupFilter(is_media_group=True),
                                 content_types=ContentType.AUDIO,
                                 state=JammyMusicStates.add_music_to_playlist)
     dp.register_callback_query_handler(delete_music_from_playlist,
