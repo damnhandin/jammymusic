@@ -35,8 +35,7 @@ async def get_own_media_group_songs_to_add(message: types.Message, album):
     await message.answer("Теперь выберите плейлист в который хотите добавить аудио", reply_markup=reply_markup)
 
 
-async def get_own_song_to_add(message: types.Message, album):
-    print(album)
+async def get_own_song_to_add(message: types.Message):
     audio = message.audio.file_id
     try:
         await message.delete()
