@@ -43,14 +43,6 @@ async def delete_this_cq_message(cq: types.CallbackQuery):
 
 
 async def user_start(message: types.Message, db: Database, config: Config):
-    user = await db.select_user(telegram_id=message.from_user.id)
-    if not user:
-        user = await db.add_user(message.from_user.full_name, message.from_user.username,
-                                 message.from_user.id, message.date, False)
-    if user["accepted_terms"] is False:
-        await message.answer("Для того чтобы использовать бота, необходимо принять пользовательское соглашение")
-        await message.answer(config.terms.cond_terms_text, reply_markup=accept_terms_keyboard)
-        return
     await message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
                          reply_markup=start_keyboard)
 

@@ -16,7 +16,8 @@ async def my_subscription_button_func(message: types.Message, db: Database):
     else:
         subscription = await db.select_user_subscription(message.from_user.id)
         if subscription is False:
-            await message.answer("Ваша подписка неактивна.", reply_markup=subscription_prices_keyboard)
+            await message.answer("Произошла ошибка, повторите попытку позже, либо обратитесь к администратору.",
+                                 reply_markup=subscription_prices_keyboard)
             return
         text = f"У вас есть премиум подписка. Она активна до {subscription.get('subscription_date_end')}.\n" \
                f"Также вы можете приобрести еще подписку, если пожелаете."

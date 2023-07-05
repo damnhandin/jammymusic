@@ -8,13 +8,11 @@ from tgbot.models.db_utils import Database
 async def accept_conditional_terms(cq: types.CallbackQuery, db: Database):
     await db.user_accepted_cond_terms(cq.from_user.id)
     try:
-        await cq.message.delete_reply_markup()
-        await cq.answer("Лицензионное соглашение было принято")
+        await cq.message.delete()
     except:
         pass
     else:
-        await cq.message.answer("Отправь мне название или ссылку на видео в ютубе и я тебе верну аудио",
-                                reply_markup=start_keyboard)
+        await cq.message.answer("Пользовательское соглашение было принято, теперь можешь пользоваться ботом. /start")
 
 
 def register_conditional_terms_handlers(dp: Dispatcher):

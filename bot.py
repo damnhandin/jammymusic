@@ -7,8 +7,10 @@ from aiogram.contrib.fsm_storage.redis import RedisStorage2
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
+from tgbot.filters.check_terms_filter import CheckUserFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin
+from tgbot.handlers.check_user_handlers import register_check_user_handlers
 from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
 from tgbot.handlers.find_song_by_words import register_find_song_by_words
@@ -50,9 +52,12 @@ def register_all_middlewares(playlist_paginator, dp, config, db):
 
 def register_all_filters(dp):
     dp.filters_factory.bind(AdminFilter)
+    dp.filters_factory.bind(CheckUserFilter)
 
 
-def register_all_handlers(dp):
+def register_all_handlers(dp, db):
+    register_conditional_terms_handlers(dp)
+    register_check_user_handlers(dp, db)
     text_button_registration(dp)
     register_admin(dp)
     register_user(dp)
@@ -64,7 +69,6 @@ def register_all_handlers(dp):
     # register_find_song(dp)
 
     register_search_music(dp)
-    register_conditional_terms_handlers(dp)
 
     register_payment(dp)
     # register_echo(dp)
@@ -82,14 +86,14 @@ async def main():
     bot = Bot(token=config.tg_bot.token, parse_mode='HTML')
     dp = Dispatcher(bot, storage=storage)
     db = Database()
-    playlist_paginator = PlaylistPaginator()
+    playlist_paginator = PlaylistPaginator(dp=dp)
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
 
     register_all_middlewares(playlist_paginator, dp, config, db)
     register_all_filters(dp)
-    register_all_handlers(dp)
+    register_all_handlers(dp, db)
     await setup_database(db)
 
     # start

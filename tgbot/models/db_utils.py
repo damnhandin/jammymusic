@@ -138,7 +138,7 @@ class Database:
             return False
         return result.get("accepted_terms")
 
-    async def select_user_playlists(self, telegram_id, limit, offset):
+    async def select_user_playlists(self, telegram_id, limit=0, offset=0):
         sql = """SELECT * FROM user_playlists 
         WHERE user_telegram_id=$1
         ORDER BY playlist_id ASC
@@ -196,6 +196,15 @@ class Database:
             playlist_id = int(playlist_id)
         sql = "UPDATE user_playlists SET playlist_title=$1 WHERE playlist_id=$2 AND user_telegram_id=$3;"
         await self.execute(sql, playlist_title, playlist_id, telegram_id, execute=True)
+
+    async def initialize_new_user(self, user_telegram_id, full_name, username, registration_date, accepted_terms):
+        user = await self.select_user(telegram_id=user_telegram_id)
+        if not user:
+            user = await self.add_user(full_name, username, user_telegram_id, registration_date, accepted_terms)
+            playlists = await self.select_user_playlists(user_telegram_id)
+            if len(playlists) < 1:
+                await self.add_new_playlist(user_telegram_id, "Избранное")
+        return user
 
     async def add_new_playlist(self, user_telegram_id, playlist_title):
         sql = "INSERT INTO user_playlists (user_telegram_id, playlist_title) VALUES ($1, $2);"
