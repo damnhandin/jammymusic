@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Union
 
 
@@ -66,6 +67,17 @@ class Database:
         );
         """
 
+        await self.execute(sql, execute=True)
+
+    async def create_table_purchase(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS purchase (
+        purchase_id SERIAL PRIMARY KEY,
+        telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+        subscription_date_start DATE NOT NULL,
+        subscription_date_end DATE NOT NULL
+        );
+        """
         await self.execute(sql, execute=True)
 
     async def create_table_videos(self):
@@ -223,6 +235,35 @@ class Database:
     async def add_audio(self, audio_id):
         sql = "INSERT INTO tracks (file_id) VALUES ($1);"
         await self.execute(sql, audio_id, execute=True)
+
+    async def select_user_valid_subscription(self, telegram_id):
+        sql = "SELECT * FROM active_subscriptions WHERE telegram_id=$1 LIMIT 1;"
+        return await self.execute(sql, fetchrow=True)
+
+    async def select_user_last_subscription(self, telegram_id, current_date):
+        sql = """
+        SELECT * FROM active_subscriptions 
+        WHERE telegram_id=$1 AND $2 <= subscription_date_end
+        ORDER BY subscription_date_end DESC
+        LIMIT 1
+        """
+        return await self.execute(sql, telegram_id, current_date, fetchrow=True)
+
+    async def add_new_subscription(self, telegram_id, amount_of_days):
+        current_date = datetime.now()
+        subscription = await self.select_user_last_subscription(telegram_id, current_date)
+        if not subscription:
+            subscription_date_start = current_date
+            subscription_date_end = subscription_date_start + timedelta(amount_of_days)
+        else:
+            subscription_date_start = subscription["subscription_date_end"] + timedelta(1)
+            subscription_date_end = subscription_date_start + timedelta(amount_of_days)
+        sql = """
+        INSERT INTO active_subscriptions (telegram_id, subscription_date_start, subscription_date_end)
+        VALUES (1, $2, $3) RETURNING *;
+        """
+        return await self.execute(sql, telegram_id, subscription_date_start, subscription_date_end, execute=True)
+
 
     async def add_user(self, full_name, username, telegram_id, registration_date, accepted_terms):
         # CREATE TABLE IF NOT EXISTS users(

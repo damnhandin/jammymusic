@@ -35,6 +35,7 @@ async def init_db(db: Database):
     await db.create_table_user_playlists()
     await db.create_table_videos()
     await db.create_table_track_playlist()
+    await db.create_table_purchase()
 
 
 async def setup_database(db: Database):
@@ -56,8 +57,11 @@ def register_all_filters(dp):
 
 
 def register_all_handlers(dp, db):
+    # Здесь хендлеры которые не сбрасывают состояние
     register_conditional_terms_handlers(dp)
     register_check_user_handlers(dp, db)
+    # Самое главное чтобы в верхних хендлерах не сбрасывалось состояние
+    register_payment(dp)
     text_button_registration(dp)
     register_admin(dp)
     register_user(dp)
@@ -70,7 +74,6 @@ def register_all_handlers(dp, db):
 
     register_search_music(dp)
 
-    register_payment(dp)
     # register_echo(dp)
 
 
