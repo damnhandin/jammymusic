@@ -260,10 +260,9 @@ class Database:
             subscription_date_end = subscription_date_start + timedelta(amount_of_days)
         sql = """
         INSERT INTO active_subscriptions (telegram_id, subscription_date_start, subscription_date_end)
-        VALUES (1, $2, $3) RETURNING *;
+        VALUES ($1, $2, $3) RETURNING *;
         """
         return await self.execute(sql, telegram_id, subscription_date_start, subscription_date_end, execute=True)
-
 
     async def add_user(self, full_name, username, telegram_id, registration_date, accepted_terms):
         # CREATE TABLE IF NOT EXISTS users(
