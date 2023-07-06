@@ -7,7 +7,7 @@ from tgbot.handlers.find_song_by_words import find_song_by_words
 from tgbot.handlers.find_song_lyrics import find_lyrics
 from tgbot.handlers.shazam import shazam_start_func
 from tgbot.handlers.similar_songs_search import similar_songs_search
-from tgbot.handlers.subscription import my_subscription_button_func
+from tgbot.handlers.payment import my_subscription_button_func
 
 from tgbot.handlers.user import my_playlists
 
