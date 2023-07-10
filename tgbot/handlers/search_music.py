@@ -10,7 +10,6 @@ from ytmusicapi import YTMusic
 from tgbot.config import Config
 from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.callback_datas import video_callback
-from tgbot.keyboards.inline import accept_terms_keyboard
 from tgbot.models.db_utils import Database
 
 
@@ -54,14 +53,6 @@ def convert_search_results_to_reply_markup(search_results):
 
 
 async def search_music_func(mes: types.Message, db: Database, config: Config):
-    is_accepted = await db.check_user_terms(mes.from_user.id)
-    if is_accepted is False:
-        await mes.answer(config.terms.cond_terms_text, reply_markup=accept_terms_keyboard)
-        return
-    try:
-        await mes.delete()
-    except Exception:
-        pass
     # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
     yt: YTMusic = YTMusic()
     video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')

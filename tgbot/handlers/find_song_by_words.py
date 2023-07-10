@@ -1,5 +1,4 @@
 from aiogram import types, Dispatcher
-from aiogram.dispatcher.filters import Text
 from aiogram.types import ContentType
 import lyricsgenius
 

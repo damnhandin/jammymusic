@@ -12,10 +12,8 @@ from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 
 from tgbot.config import Config
-from tgbot.handlers.search_music import search_music_func
 from tgbot.handlers.user import run_blocking_io
 from tgbot.keyboards.callback_datas import action_callback
-from tgbot.keyboards.inline import accept_terms_keyboard
 from tgbot.models.db_utils import Database
 
 
@@ -25,10 +23,6 @@ async def shazam_start_func(message: types.Message, state):
 
 
 async def shazam_get_voice_message(message: types.Message, db: Database, config: Config):
-    is_accepted = await db.check_user_terms(message.from_user.id)
-    if is_accepted is False:
-        await message.answer(config.terms.cond_terms_text, reply_markup=accept_terms_keyboard)
-        return
     shazam = Shazam()
     voice_file = io.BytesIO()
     await message.voice.download(destination_file=voice_file)
@@ -38,14 +32,18 @@ async def shazam_get_voice_message(message: types.Message, db: Database, config:
     if not song:
         await message.answer("Я не смог распознать песню")
         return
-    text = f"{song['subtitle']} - {song['title']}"
+
+    try:
+        text = f"{song['subtitle']} - {song['title']}"
+    except KeyError:
+        return
     await message.answer(f"Это {text}")
 
     yt: YTMusic = YTMusic()
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
     if not search_results:
         return
-    video_id = search_results["video_id"]
+    video_id = search_results.get("video_id")
     if not video_id:
         return
     yt_link = f"https://www.youtube.com/watch?v={video_id}"
@@ -70,8 +68,8 @@ async def shazam_get_voice_message(message: types.Message, db: Database, config:
     await run_blocking_io(audio.stream_to_buffer, audio_file)
     await run_blocking_io(audio_file.seek, 0)
     await message.answer_audio(InputFile(audio_file), title=audio.title,
-                                  performer=yt_video.author if yt_video.author else None,
-                                  reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+                               performer=yt_video.author if yt_video.author else None,
+                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
 
 
 def register_shazam(dp: Dispatcher):

@@ -15,7 +15,7 @@ from pytube.exceptions import AgeRestrictedError
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
     playlist_action, playlist_navg_callback
-from tgbot.keyboards.inline import confirm_start_keyboard, accept_terms_keyboard
+from tgbot.keyboards.inline import confirm_start_keyboard
 from tgbot.keyboards.reply import start_keyboard
 from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber
 from tgbot.misc.misc_funcs import delete_all_messages_from_data
