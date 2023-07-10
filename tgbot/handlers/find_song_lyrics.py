@@ -2,15 +2,12 @@ import logging
 import re
 from math import ceil
 
-import shazamio
 from aiogram import types, Dispatcher
-from aiogram.dispatcher.filters import Text
 from aiogram.types import ContentType
 from lyricsgenius.song import Song
 from ytmusicapi import YTMusic
 
 from tgbot.handlers.user import run_cpu_bound
-from tgbot.misc.exceptions import SongNotFound
 from tgbot.misc.states import JammyMusicStates
 from tgbot.config import Config
 import lyricsgenius

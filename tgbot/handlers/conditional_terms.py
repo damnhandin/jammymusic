@@ -1,7 +1,6 @@
 from aiogram import types, Dispatcher
 
 from tgbot.keyboards.callback_datas import action_callback
-from tgbot.keyboards.reply import start_keyboard
 from tgbot.models.db_utils import Database
 
 

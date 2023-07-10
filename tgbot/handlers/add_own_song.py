@@ -1,12 +1,8 @@
-import asyncio
-from asyncio import get_running_loop
 from typing import Union
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters import Text, MediaGroupFilter
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, MediaGroup, InputFile, \
-    InputMediaAudio
-
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, MediaGroup
 from tgbot.keyboards.callback_datas import action_callback
 
 
@@ -25,7 +21,6 @@ async def attach_many_songs_from_album(album: list[types.Message], media_group: 
 
 
 async def get_own_media_group_songs_to_add(message: types.Message, album):
-    print(album)
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("Добавить в мои плейлисты",
                               callback_data=action_callback.new(cur_action="add_to_playlist"))]
