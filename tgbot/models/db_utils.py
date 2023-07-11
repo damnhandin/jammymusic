@@ -150,6 +150,23 @@ class Database:
             return False
         return result.get("accepted_terms")
 
+    async def check_if_playlist_available(self, telegram_id, playlist_id, current_date):
+        if isinstance(playlist_id, str):
+            playlist_id = int(playlist_id)
+        if (await self.check_subscription_is_valid(telegram_id, current_date)) is True:
+            return True
+        sql = """
+        WITH available_playlists AS 
+        (SELECT playlist_id FROM user_playlists 
+        WHERE user_telegram_id=$1 
+        ORDER BY playlist_id ASC 
+        LIMIT 1)
+        SELECT *
+        FROM user_playlists INNER JOIN available_playlists USING(playlist_id)
+        WHERE playlist_id=$2;
+        """
+        result = await self.execute(sql, telegram_id, playlist_id, fetch=True)
+        return bool(result)
 
     async def select_user_playlists(self, telegram_id, limit=0, offset=0):
         sql = """SELECT * FROM user_playlists 
@@ -173,6 +190,10 @@ class Database:
             raise PlaylistNotFound
         sql = "SELECT * FROM track_playlist WHERE playlist_id=$1;"
         return await self.execute(sql, playlist_id, fetch=True)
+
+    async def select_user_available_playlist(self, user_telegram_id):
+        sql = "SELECT * FROM user_playlists WHERE user_telegram_id=$1 LIMIT 1;"
+        return await self.execute(sql, user_telegram_id, fetchrow=True)
 
     async def user_accepted_cond_terms(self, telegram_id):
         await self.execute("UPDATE users SET accepted_terms=True "
@@ -236,10 +257,6 @@ class Database:
         sql = "INSERT INTO tracks (file_id) VALUES ($1);"
         await self.execute(sql, audio_id, execute=True)
 
-    async def select_user_valid_subscription(self, telegram_id):
-        sql = "SELECT * FROM active_subscriptions WHERE telegram_id=$1 LIMIT 1;"
-        return await self.execute(sql, fetchrow=True)
-
     async def select_user_last_subscription(self, telegram_id, current_date):
         sql = """
         SELECT * FROM active_subscriptions 
@@ -260,7 +277,7 @@ class Database:
             subscription_date_end = subscription_date_start + timedelta(amount_of_days)
         sql = """
         INSERT INTO active_subscriptions (telegram_id, subscription_date_start, subscription_date_end)
-        VALUES ($1, $2, $3) RETURNING *;
+        VALUES ($1, $2, $3);
         """
         return await self.execute(sql, telegram_id, subscription_date_start, subscription_date_end, execute=True)
 
@@ -306,7 +323,7 @@ class Database:
         # return result.get("signed") or False
         return result
 
-    async def check_subscription_is_valid(self, telegram_id, current_date):
+    async def check_subscription_is_valid(self, telegram_id, current_date) -> bool:
         sql = """
         SELECT CASE WHEN $1 <= subscription_date_end THEN True ELSE False END AS status
         FROM active_subscriptions

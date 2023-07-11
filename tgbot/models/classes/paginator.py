@@ -1,10 +1,11 @@
+from datetime import datetime
 from math import ceil
 from typing import Union
 
 from aiogram import Dispatcher
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from tgbot.keyboards.callback_datas import action_callback, edit_playlist_callback, playlist_callback, \
+from tgbot.keyboards.callback_datas import edit_playlist_callback, playlist_callback, \
     playlist_navg_callback
 from tgbot.models.db_utils import Database
 
@@ -34,9 +35,19 @@ class PlaylistPaginator:
 
         playlists = await db.select_user_playlists(user_telegram_id, self.limit_per_page,
                                                    (cur_page - 1) * self.limit_per_page)
-
+        is_user_subscription_valid = await db.check_subscription_is_valid(user_telegram_id, datetime.now())
+        if is_user_subscription_valid is False:
+            available_playlist = await db.select_user_available_playlist(user_telegram_id)
+            if available_playlist:
+                available_playlist_id = available_playlist.get("playlist_id")
+            else:
+                available_playlist_id = None
+        else:
+            available_playlist_id = None
         playlists_keyboard = await self._add_playlists_buttons(playlists, edit_mode=edit_mode,
-                                                               cur_mode=cur_mode, cur_page=cur_page)
+                                                               cur_mode=cur_mode, cur_page=cur_page,
+                                                               user_sub_status=is_user_subscription_valid,
+                                                               available_playlist_id=available_playlist_id)
         await self._add_navigation_buttons(cur_page, cur_mode, keyboard=playlists_keyboard)
         await self._add_interaction_buttons(cur_page, cur_mode, keyboard=playlists_keyboard,
                                             add_track_mode=add_track_mode, edit_mode=edit_mode)
@@ -60,6 +71,14 @@ class PlaylistPaginator:
             cur_page = count_of_pages
         else:
             cur_page -= 1
+        keyboard = await self.create_playlist_keyboard(user_telegram_id, db, cur_page=cur_page,
+                                                       cur_mode=cur_mode,
+                                                       add_track_mode=add_track_mode)
+        return keyboard
+
+    async def refresh_page_navigation(self, user_telegram_id: int, cur_page: int, cur_mode: str,
+                                      db: Database, count_of_pages: int, add_track_mode: bool = False):
+        cur_page = await self.__check_cur_page(user_telegram_id, db, cur_page)
         keyboard = await self.create_playlist_keyboard(user_telegram_id, db, cur_page=cur_page,
                                                        cur_mode=cur_mode,
                                                        add_track_mode=add_track_mode)
@@ -105,7 +124,7 @@ class PlaylistPaginator:
                                                                                 cur_action="prev_page")),
             InlineKeyboardButton("🔄", callback_data=playlist_navg_callback.new(cur_page=cur_page,
                                                                                cur_mode=cur_mode,
-                                                                               cur_action="refresh")),
+                                                                               cur_action="page_refresh")),
             InlineKeyboardButton("▶️", callback_data=playlist_navg_callback.new(cur_page=cur_page,
                                                                                 cur_mode=cur_mode,
                                                                                 cur_action="next_page"))
@@ -113,19 +132,35 @@ class PlaylistPaginator:
         return keyboard
 
     @staticmethod
-    async def _add_playlists_buttons(playlists, keyboard=None, edit_mode=False, cur_mode="default", cur_page=1):
+    async def _add_playlists_buttons(playlists, keyboard=None, edit_mode=False, cur_mode="default", cur_page=1,
+                                     user_sub_status=False, available_playlist_id=None):
         if keyboard is None:
             keyboard = InlineKeyboardMarkup()
         if edit_mode:
             callback_data = edit_playlist_callback
         else:
             callback_data = playlist_callback
+        if user_sub_status is True:
+            for playlist in playlists:
+                keyboard.row(InlineKeyboardButton(playlist["playlist_title"],
+                                                  callback_data=callback_data.new(
+                                                      playlist_id=playlist["playlist_id"],
+                                                      cur_mode=cur_mode,
+                                                      cur_page=cur_page
+                                                  )))
+        else:
+            for playlist in playlists:
+                playlist_id = playlist["playlist_id"]
+                if playlist_id == available_playlist_id:
+                    playlist_title = playlist["playlist_title"]
+                else:
+                    playlist_title = f'{playlist["playlist_title"]} 🔒'
 
-        for playlist in playlists:
-            keyboard.row(InlineKeyboardButton(playlist["playlist_title"],
-                                              callback_data=callback_data.new(
-                                                  playlist_id=playlist["playlist_id"],
-                                                  cur_mode=cur_mode,
-                                                  cur_page=cur_page
-                                              )))
+                keyboard.row(InlineKeyboardButton(playlist_title,
+                                                  callback_data=callback_data.new(
+                                                      playlist_id=playlist_id,
+                                                      cur_mode=cur_mode,
+                                                      cur_page=cur_page
+                                                  )))
+
         return keyboard

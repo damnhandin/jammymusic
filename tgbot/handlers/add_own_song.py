@@ -1,12 +1,13 @@
 from typing import Union
 
 from aiogram import Dispatcher, types
-from aiogram.dispatcher.filters import Text, MediaGroupFilter
+from aiogram.dispatcher.filters import MediaGroupFilter
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, MediaGroup
 from tgbot.keyboards.callback_datas import action_callback
 
 
-async def add_own_song_func(message):
+async def add_own_song_func(message, state):
+    await state.reset_state()
     # await JammyMusicStates.add_own_song.set()
     await message.answer("Пришлите свой трек")
 
@@ -43,7 +44,7 @@ async def get_own_song_to_add(message: types.Message):
     await message.answer_audio(audio=audio, reply_markup=reply_markup)
 
 
-async def get_own_song_to_add_media_group(message: types.Message, album: list[types.Message]):
+async def get_own_song_to_add_media_group(message: types.Message):
     await message.answer("Если вы хотите импортировать сразу несколько треков за раз, вам необходимо зайти в меню "
                          "редактирования плейлиста, куда хотите добавить музыку и там нажать соответствующую кнопку")
 

@@ -4,7 +4,7 @@ from aiogram.types import ContentType, PreCheckoutQuery
 
 from datetime import datetime
 
-from tgbot.misc.states import JammyMusicStates
+from tgbot.misc.misc_funcs import check_payment
 from tgbot.models.db_utils import Database
 
 
@@ -62,16 +62,6 @@ async def donate(message: types.Message, config):
                                    prices=[types.LabeledPrice('Премиум подписка', 69*100)])
 
 
-async def get_unknown_content_to_donate(message: types.Message):
-    await message.answer("Похоже, что вы хотели оплатить подписку, но мы получили от вас нечто иное. "
-                         "Прошипите /start чтобы вернуться в главное меню.")
-
-
-async def check_payment(user_telegram_id, db: Database):
-    # TODO Здесь должна быть проверка, если юзер находится в блоклисте
-    return True
-
-
 async def success_donate(query: PreCheckoutQuery, state: FSMContext, db: Database):
     await state.reset_state()
     if (await check_payment(query.from_user.id, db)) is False:
@@ -101,5 +91,3 @@ def register_payment(dp: Dispatcher):
     dp.register_pre_checkout_query_handler(success_donate,
                                            state="*")
     dp.register_message_handler(success_donate_msg, content_types=ContentType.SUCCESSFUL_PAYMENT, state="*")
-    dp.register_message_handler(get_unknown_content_to_donate, content_types=ContentType.ANY,
-                                state=JammyMusicStates.donate)

@@ -1,16 +1,11 @@
-from json import loads
-
 from aiogram import Dispatcher, types
-from aiogram.dispatcher.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from aiogram.utils.exceptions import MessageIsTooLong
 from youtubesearchpython import VideosSearch
 from ytmusicapi import YTMusic
 
-from tgbot.config import Config
 from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.callback_datas import video_callback
-from tgbot.models.db_utils import Database
 
 
 def filter_songs_without_correct_duration(video_searcher, searched_music=None):
@@ -52,7 +47,7 @@ def convert_search_results_to_reply_markup(search_results):
     return reply_markup
 
 
-async def search_music_func(mes: types.Message, db: Database, config: Config):
+async def search_music_func(mes: types.Message):
     # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
     yt: YTMusic = YTMusic()
     video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')

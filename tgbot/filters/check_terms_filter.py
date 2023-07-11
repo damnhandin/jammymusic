@@ -4,7 +4,6 @@ from datetime import datetime
 from aiogram import types
 from aiogram.dispatcher.filters import BoundFilter
 
-from tgbot.config import Config
 from tgbot.models.db_utils import Database
 
 

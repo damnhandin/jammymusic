@@ -1,7 +1,7 @@
 import asyncio
 
 import aiogram.dispatcher.filters
-from aiogram import Dispatcher, types, Bot
+from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import MediaGroupFilter
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton

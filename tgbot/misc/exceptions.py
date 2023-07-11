@@ -2,6 +2,10 @@ class PlaylistNotFound(BaseException):
     pass
 
 
+class PlaylistNotAvailable(BaseException):
+    pass
+
+
 class SongNotFound(BaseException):
     pass
 

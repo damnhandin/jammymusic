@@ -6,11 +6,11 @@ from tgbot.models.dataclasses.messages import BotMessages
 from tgbot.models.db_utils import Database
 
 
-async def check_user_callback_query_handler(cq: types.CallbackQuery, config):
+async def check_user_callback_query_handler(cq: types.CallbackQuery):
     await cq.message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard)
 
 
-async def check_user_message_query_handler(message: types.Message, config):
+async def check_user_message_query_handler(message: types.Message):
     await message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard)
 
 

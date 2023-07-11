@@ -1,20 +1,15 @@
 import io
 
 from aiogram import types, Dispatcher
-from aiogram.dispatcher.filters import Text
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
-from aiogram.utils.exceptions import InvalidQueryID
 from pydub import AudioSegment
 from shazamio import Shazam
 from ytmusicapi import YTMusic
-from youtubesearchpython import VideosSearch
 from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 
-from tgbot.config import Config
 from tgbot.handlers.user import run_blocking_io
 from tgbot.keyboards.callback_datas import action_callback
-from tgbot.models.db_utils import Database
 
 
 async def shazam_start_func(message: types.Message, state):
@@ -22,7 +17,7 @@ async def shazam_start_func(message: types.Message, state):
     await message.answer("Отправь мне голосовое сообщение, а я постараюсь узнать трек")
 
 
-async def shazam_get_voice_message(message: types.Message, db: Database, config: Config):
+async def shazam_get_voice_message(message: types.Message):
     shazam = Shazam()
     voice_file = io.BytesIO()
     await message.voice.download(destination_file=voice_file)
