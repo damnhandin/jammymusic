@@ -1,9 +1,19 @@
 from aiogram import types, Dispatcher
 from aiogram.types import ContentType
 import lyricsgenius
+import io
 
 from tgbot.config import Config
 from tgbot.misc.states import JammyMusicStates
+from tgbot.handlers.user import run_blocking_io
+from tgbot.keyboards.callback_datas import action_callback
+
+from ytmusicapi import YTMusic
+from pytube import YouTube, Stream
+
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from pydub import AudioSegment
+from pytube.exceptions import AgeRestrictedError
 
 
 async def find_song_by_words(message: types.Message):
@@ -15,7 +25,7 @@ async def format_songs_title_to_message_text(data):
     msg_text = "<b>Результаты по вашему запросу:</b>\n"
     for item in data:
         try:
-            msg_text += f"{(item['result']['artist_names'])} - {item['result']['title_with_featured']}\n"
+            msg_text += f"<pre>{(item['result']['artist_names'])} - {item['result']['title_with_featured']}</pre>\n"
         except KeyError:
             continue
     return msg_text
@@ -36,6 +46,40 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
             return
     msg_text = await format_songs_title_to_message_text(result)
     await message.answer(msg_text)
+
+    songs = msg_text.split("\n")
+    first_song = songs[1]
+    yt: YTMusic = YTMusic()
+    search_results = (await run_blocking_io(yt.search, first_song, "songs", None, 1))
+    if not search_results:
+        return
+    video_id = search_results.get("video_id")
+    if not video_id:
+        return
+    yt_link = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        yt_video = YouTube(yt_link)
+    except:
+        yt_link = f"https://music.youtube.com/watch?v={video_id}"
+        yt_video = YouTube(yt_link)
+    if not yt_video:
+        return
+    try:
+        audio: Stream = yt_video.streams.get_audio_only()
+    except AgeRestrictedError:
+        return
+    if audio.filesize > 50000000:
+        return
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("Добавить в мои плейлисты",
+                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
+    ])
+    audio_file = io.BytesIO()
+    await run_blocking_io(audio.stream_to_buffer, audio_file)
+    await run_blocking_io(audio_file.seek, 0)
+    await message.answer_audio(InputFile(audio_file), title=audio.title,
+                               performer=yt_video.author if yt_video.author else None,
+                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
 
 
 async def get_unknown_content_to_find_song(message: types.Message):
