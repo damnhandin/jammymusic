@@ -1,5 +1,4 @@
 from aiogram import types, Dispatcher
-from aiogram.types import ContentType
 import lyricsgenius
 import io
 
@@ -12,7 +11,6 @@ from ytmusicapi import YTMusic
 from pytube import YouTube, Stream
 
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
-from pydub import AudioSegment
 from pytube.exceptions import AgeRestrictedError
 
 

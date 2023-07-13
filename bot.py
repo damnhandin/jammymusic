@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -31,11 +32,11 @@ logger = logging.getLogger(__name__)
 
 async def init_db(db: Database):
     await db.create_table_users()
+    await db.create_table_users_subscriptions()
     await db.create_table_active_subscriptions()
     await db.create_table_user_playlists()
     await db.create_table_videos()
     await db.create_table_track_playlist()
-    await db.create_table_purchase()
 
 
 async def setup_database(db: Database):
@@ -43,6 +44,19 @@ async def setup_database(db: Database):
     await db.create()
     await init_db(db)
     logging.info("Готово")
+
+
+async def regular_functions(db: Database):
+    current_date = datetime.now()
+    await db.delete_all_not_valid_subs(current_date=current_date)
+    await db.activate_unsubs_with_subs_in_queue()
+
+
+async def setup_regular_function(db: Database, start_timeout=30, timer_delay=60):
+    await asyncio.sleep(start_timeout)
+    while True:
+        await regular_functions(db)
+        await asyncio.sleep(timer_delay)
 
 
 def register_all_middlewares(playlist_paginator, dp, config, db):
@@ -98,7 +112,7 @@ async def main():
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)
-
+    asyncio.create_task(setup_regular_function(db))
     # start
     try:
         await dp.start_polling()

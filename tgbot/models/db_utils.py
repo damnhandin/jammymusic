@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Union
 
-
 import asyncpg
 from asyncpg import Pool, Connection, UniqueViolationError
 
@@ -57,23 +56,22 @@ class Database:
 
         await self.execute(sql, execute=True)
 
+    async def create_table_users_subscriptions(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS users_subscriptions (
+        sub_id SERIAL PRIMARY KEY,
+        telegram_id BIGINT REFERENCES users(telegram_id),
+        sub_days INT NOT NULL,
+        sub_status INT NOT NULL
+        );
+        """
+        await self.execute(sql, execute=True)
+
     async def create_table_active_subscriptions(self):
         sql = """
         CREATE TABLE IF NOT EXISTS active_subscriptions(
-        sub_id SERIAL PRIMARY KEY,
-        telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
-        subscription_date_start DATE NOT NULL,
-        subscription_date_end DATE NOT NULL
-        );
-        """
-
-        await self.execute(sql, execute=True)
-
-    async def create_table_purchase(self):
-        sql = """
-        CREATE TABLE IF NOT EXISTS purchase (
-        purchase_id SERIAL PRIMARY KEY,
-        telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+        sub_id INT REFERENCES users_subscriptions(sub_id),
+        telegram_id BIGINT UNIQUE REFERENCES users(telegram_id),
         subscription_date_start DATE NOT NULL,
         subscription_date_end DATE NOT NULL
         );
@@ -175,6 +173,63 @@ class Database:
         LIMIT $2 OFFSET $3;"""
         return await self.execute(sql, telegram_id, limit, offset, fetch=True)
 
+    async def select_all_users_without_sub(self):
+        sql = """
+        SELECT telegram_id
+        FROM users LEFT JOIN active_subscriptions USING(telegram_id) WHERE sub_id IS NULL;
+        """
+        return await self.execute(sql, fetch=True)
+
+    async def select_all_users_without_active_sub_and_with_sub_in_queue(self):
+        sql = """
+        SELECT telegram_id
+        FROM users 
+        LEFT JOIN active_subscriptions USING(telegram_id)
+        LEFT JOIN users_subscriptions USING(telegram_id)
+        WHERE active_subscriptions.sub_id IS NULL AND users_subscriptions.sub_status = 2
+        GROUP BY telegram_id;
+        """
+        return await self.execute(sql, fetch=True)
+
+    async def delete_all_not_valid_subs(self, current_date):
+        sql = """
+        DELETE FROM active_subscriptions WHERE subscription_date_end < $1
+        """
+        await self.execute(sql, current_date, execute=True)
+
+    async def activate_unsubs_with_subs_in_queue(self):
+        """
+        Если у пользователя имеется подписка в очереди, но нет активированной подписки, то эта функция найдёт
+        подписку и активирует
+        :param current_date:
+        :return:
+        """
+        all_unsubs = await self.select_all_users_without_active_sub_and_with_sub_in_queue()
+        current_date = datetime.now()
+        for user in all_unsubs:
+            await self.add_user_sub_from_queue_to_activate(user["telegram_id"], current_date)
+        # sql = """
+        # CREATE TABLE IF NOT EXISTS active_subscriptions(
+        # sub_id SERIAL PRIMARY KEY,
+        # telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+        # subscription_date_start DATE NOT NULL,
+        # subscription_date_end DATE NOT NULL
+        # );
+        # """
+        # sql = """
+        # INSERT INTO subscriptions_history (telegram_id, subscription_date_start, subscription_date_end)
+        # SELECT telegram_id, subscription_date_start, subscription_date_end
+        # FROM active_subscriptions
+        # WHERE subscription_date_end < $1;
+        # """
+        # await self.execute(sql, current_date, execute=True)
+        # sql = """
+        # DELETE FROM active_subscriptions
+        # WHERE subscription_date_end < $1;
+        # """
+        # await self.execute(sql, current_date, execute=True)
+
+
     async def select_user_playlist(self, playlist_id):
         if type(playlist_id) is not int:
             playlist_id = int(playlist_id)
@@ -266,20 +321,78 @@ class Database:
         """
         return await self.execute(sql, telegram_id, current_date, fetchrow=True)
 
-    async def add_new_subscription(self, telegram_id, amount_of_days):
-        current_date = datetime.now()
-        subscription = await self.select_user_last_subscription(telegram_id, current_date)
-        if not subscription:
-            subscription_date_start = current_date
-            subscription_date_end = subscription_date_start + timedelta(amount_of_days)
-        else:
-            subscription_date_start = subscription["subscription_date_end"] + timedelta(1)
-            subscription_date_end = subscription_date_start + timedelta(amount_of_days)
+    async def select_user_last_valid_subscription(self, telegram_id, current_date):
         sql = """
-        INSERT INTO active_subscriptions (telegram_id, subscription_date_start, subscription_date_end)
-        VALUES ($1, $2, $3);
+        SELECT * FROM active_subscriptions 
+        WHERE telegram_id=$1 AND $2 <= subscription_date_end AND $1 >= subscription_date_start
+        ORDER BY subscription_date_end DESC
+        LIMIT 1
         """
-        return await self.execute(sql, telegram_id, subscription_date_start, subscription_date_end, execute=True)
+        return await self.execute(sql, telegram_id, current_date, fetchrow=True)
+
+
+
+    async def select_current_subscription(self, telegram_id, current_date):
+        sql = """
+        SELECT * FROM active_subscriptions
+        WHERE telegram_id=$1 AND $2 >= subscription_date_start AND $2 <= subscription_date_end
+        LIMIT 1;
+        """
+        return await self.execute(sql, telegram_id, current_date, fetchrow=True)
+
+    async def select_valid_subscription_from_queue(self, telegram_id):
+        sql = """
+        SELECT * FROM users_subscriptions 
+        WHERE telegram_id=$1 AND sub_status=1
+        LIMIT 1;
+        """
+        return await self.execute(sql, telegram_id, fetchrow=True)
+
+    async def add_user_sub_from_queue_to_activate(self, telegram_id, current_date):
+        subscription_in_queue = await self.select_valid_subscription_from_queue(telegram_id)
+        if not subscription_in_queue:
+            return
+        sql = """
+        UPDATE users_subscriptions SET sub_status = 2 
+        WHERE telegram_id=$1 AND sub_status=1 AND sub_id=$2;
+        """
+        await self.execute(sql, telegram_id, subscription_in_queue["sub_id"], execute=True)
+        try:
+            await self.execute("""
+            INSERT INTO active_subscriptions (sub_id, telegram_id, subscription_date_start, subscription_date_end)
+            VALUES ($1, $2, $3, $4);""", subscription_in_queue["sub_id"], telegram_id, current_date,
+                               current_date + timedelta(subscription_in_queue["sub_days"]), execute=True)
+        except UniqueViolationError:
+            await self.execute("""
+                UPDATE users_subscriptions SET sub_status = 1 
+                WHERE sub_id=$1;    
+            """)
+        # await self.execute(sql, telegram_id, current_date, execute=True)
+
+    async def add_subscription_to_queue(self, telegram_id, sub_days):
+        sql = """
+        INSERT INTO users_subscriptions (telegram_id, sub_days, sub_status) VALUES ($1, $2, 1);
+        """
+        await self.execute(sql, telegram_id, sub_days, execute=True)
+
+    async def select_user_active_subscription(self, telegram_id, current_date):
+        sql = """SELECT *
+        FROM active_subscriptions
+        WHERE telegram_id=$1 AND subscription_date_start <= $2 AND subscription_date_end >= $2
+        LIMIT 1;"""
+        return await self.execute(sql, telegram_id, current_date, fetchrow=True)
+
+    async def add_user_subscription_to_queue_then_activate_if_need(self, telegram_id, current_date, sub_days):
+        """
+        sub_statuses: 0: cancelled,
+                      1: in_queue,
+                      2: is_active,
+                      3: is_finished
+        """
+        await self.add_subscription_to_queue(telegram_id, sub_days)
+        active_subscription = await self.select_user_active_subscription(telegram_id, current_date)
+        if not active_subscription:
+            await self.add_user_sub_from_queue_to_activate(telegram_id, current_date)
 
     async def add_user(self, full_name, username, telegram_id, registration_date, accepted_terms):
         # CREATE TABLE IF NOT EXISTS users(
@@ -314,18 +427,26 @@ class Database:
         if int((result.split())[1]) != 1:
             raise PlaylistNotFound
 
-    async def select_user_subscription(self, telegram_id):
+    async def select_first_user_subscription(self, telegram_id, current_date):
         result = await self.execute(
-            "SELECT * FROM active_subscriptions WHERE telegram_id=$1;", telegram_id,
+            "SELECT * FROM active_subscriptions WHERE telegram_id=$1 AND subscription_date_start <= $2 LIMIT 1;",
+            telegram_id, current_date,
             fetchrow=True)
         if not result:
             return False
         # return result.get("signed") or False
         return result
 
+    async def select_all_user_subscriptions(self, telegram_id, current_date):
+        return await self.execute(
+            "SELECT * FROM active_subscriptions WHERE telegram_id=$1 AND subscription_date_start <= $2;",
+            telegram_id, current_date,
+            fetch=True)
+
     async def check_subscription_is_valid(self, telegram_id, current_date) -> bool:
         sql = """
-        SELECT CASE WHEN $1 <= subscription_date_end THEN True ELSE False END AS status
+        SELECT CASE WHEN subscription_date_start >= $1 AND $1 <= subscription_date_end THEN True 
+        ELSE False END AS status
         FROM active_subscriptions
         WHERE telegram_id = $2;"""
         result = await self.execute(sql, current_date, telegram_id, fetchrow=True)
