@@ -25,7 +25,7 @@ async def format_songs_title_to_message_text(data):
     msg_text = "<b>Результаты по вашему запросу:</b>\n"
     for item in data:
         try:
-            msg_text += f"<pre>{(item['result']['artist_names'])} - {item['result']['title_with_featured']}</pre>\n"
+            msg_text += f"<code>{(item['result']['artist_names'])} - {item['result']['title_with_featured']}</code>\n"
         except KeyError:
             continue
     return msg_text
@@ -40,17 +40,22 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
         return
     else:
         try:
-            result = result["sections"][0]["hits"]
+            songs = result["sections"][0]["hits"]
         except KeyError:
             await message.answer("К сожалению, нам не удалось найти данную песню")
             return
-    msg_text = await format_songs_title_to_message_text(result)
+    print(songs
+          )
+    msg_text = await format_songs_title_to_message_text(songs)
     await message.answer(msg_text)
 
-    songs = msg_text.split("\n")
+    # songs = msg_text.split("\n")
     first_song = songs[1]
     yt: YTMusic = YTMusic()
-    search_results = (await run_blocking_io(yt.search, first_song, "songs", None, 1))
+    try:
+        search_results = (await run_blocking_io(yt.search, first_song["result"]["full_title"], "songs", None, 1))[0]
+    except (IndexError, ValueError):
+        return
     if not search_results:
         return
     video_id = search_results.get("video_id")
