@@ -12,3 +12,28 @@ accept_terms_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Принять лиц. соглашение",
                                   callback_data=action_callback.new(cur_action="accept_conditional_terms"))]
         ])
+
+my_subscriptions_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Мои подписки", callback_data=action_callback.new(
+                cur_action="show_my_subscriptions"))]
+        ])
+
+buy_subscription_keyboard_unsub = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Купить подписку",
+                          callback_data=action_callback.new(cur_action="buy_subscription"))]
+])
+
+
+buy_subscription_keyboard_sub = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Купить подписку",
+                          callback_data=action_callback.new(cur_action="buy_subscription"))],
+    [InlineKeyboardButton(text="Моя подписка", callback_data=action_callback.new(
+        cur_action="show_my_subscriptions"))]
+])
+
+thanks_to_devs_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Вау, спасибо! ✨",
+                          callback_data=action_callback.new(
+                              cur_action="thanks_to_devs"
+                          ))]
+])

@@ -20,6 +20,7 @@ from tgbot.handlers.search_music import register_search_music
 from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.text_button_registration import text_button_registration
+from tgbot.handlers.thanks_to_devs import register_thanks_to_devs_handlers
 from tgbot.handlers.user import register_user
 from tgbot.middlewares.album import AlbumMiddleware
 from tgbot.middlewares.environment import EnvironmentMiddleware
@@ -32,11 +33,16 @@ logger = logging.getLogger(__name__)
 
 async def init_db(db: Database):
     await db.create_table_users()
+    await db.create_table_sub_statuses()
     await db.create_table_users_subscriptions()
     await db.create_table_active_subscriptions()
     await db.create_table_user_playlists()
     await db.create_table_videos()
     await db.create_table_track_playlist()
+    await db.create_table_thanks_to_devs()
+    await db.create_table_premium_free_trials()
+
+    # await db.init_sub_statuses()
 
 
 async def setup_database(db: Database):
@@ -46,15 +52,25 @@ async def setup_database(db: Database):
     logging.info("Готово")
 
 
-async def regular_functions(db: Database):
+async def delete_all_not_valid_subs(db):
+    sql = """
+    SELECT * FROM active_subscriptions WHERE subscription_date_end < $1;
+    """
+    non_valid_subs = await db.execute(sql, fetch=True)
     current_date = datetime.now()
-    await db.delete_all_not_valid_subs(current_date=current_date)
+    for user in non_valid_subs:
+        await db.activate_user_sub(user["telegram_id"], current_date)
+
+
+async def regular_functions(db: Database):
+    await delete_all_not_valid_subs(db)
     await db.activate_unsubs_with_subs_in_queue()
 
 
-async def setup_regular_function(db: Database, start_timeout=30, timer_delay=60):
+async def setup_regular_function(db: Database, start_timeout=1, timer_delay=60):
     await asyncio.sleep(start_timeout)
     while True:
+        print(1)
         await regular_functions(db)
         await asyncio.sleep(timer_delay)
 
@@ -89,6 +105,7 @@ def register_all_handlers(dp, db):
     register_search_music(dp)
 
     # register_echo(dp)
+    register_thanks_to_devs_handlers(dp)
 
 
 async def main():

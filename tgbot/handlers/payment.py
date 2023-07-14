@@ -1,74 +1,36 @@
-import asyncpg
+from typing import Union
+
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentType, PreCheckoutQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from tgbot.handlers.user import run_blocking_io
 from tgbot.keyboards.callback_datas import action_callback
+from tgbot.keyboards.inline import buy_subscription_keyboard_sub, buy_subscription_keyboard_unsub
 from tgbot.misc.misc_funcs import check_payment
 from tgbot.models.db_utils import Database
 
 
-async def my_subscription_button_func(message: types.Message, db: Database, config):
-    title_text = "Премиум подписка"
-    desc_text = "Оформление премиум подписки в @jammy_music_bot"
-    currernt_date = datetime.now()
+async def my_subscription_button_func(target: Union[types.CallbackQuery, types.Message], db: Database):
+    current_date = datetime.now()
+    if isinstance(target, types.Message):
+        message_bot_func = target.answer
+    else:
+        message_bot_func = target.message.edit_text
 
-    subscription_status = await db.check_subscription_is_valid(message.from_user.id, currernt_date)
+    subscription_status = await db.check_subscription_is_valid(target.from_user.id, current_date)
     if not subscription_status:
-        await message.bot.send_invoice(chat_id=message.chat.id,
-                                       title=title_text,
-                                       description=desc_text,
-                                       payload='invoice',
-                                       provider_token=config.tg_bot.payment_token,
-                                       currency='RUB',
-                                       prices=[types.LabeledPrice('Премиум подписка', 69 * 100)])
+        await message_bot_func("У вас отсутствует премиум-подписка.", reply_markup=buy_subscription_keyboard_unsub)
         return
     else:
-        subscription = await db.select_first_user_subscription(message.from_user.id, currernt_date)
+        subscription = await db.select_user_active_subscription(target.from_user.id, current_date)
         if not subscription:
-            await message.answer("Ваша подписка неактивна.")
-            await message.bot.send_invoice(chat_id=message.chat.id,
-                                           title=title_text,
-                                           description=desc_text,
-                                           payload='invoice',
-                                           provider_token=config.tg_bot.payment_token,
-                                           currency='RUB',
-                                           prices=[types.LabeledPrice('Премиум подписка', 69 * 100)])
+            await message_bot_func("Ваша подписка неактивна.", reply_markup=buy_subscription_keyboard_unsub)
             return
-        text = f"У вас есть премиум подписка. Она активна до {subscription.get('subscription_date_end')}.\n" \
+        text = f"У вас есть премиум подписка.\n" \
                f"Также вы можете приобрести еще подписку, если пожелаете."
-
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Мои подписки", callback_data=action_callback.new(
-                cur_action="show_my_subscriptions"))]
-        ])
-        await message.answer(text, reply_markup=reply_markup)
-        await message.bot.send_invoice(chat_id=message.chat.id,
-                                       title=title_text,
-                                       description=desc_text,
-                                       payload='invoice',
-                                       provider_token=config.tg_bot.payment_token,
-                                       currency='RUB',
-                                       prices=[types.LabeledPrice('Премиум подписка', 69 * 100)])
-    try:
-        await message.delete()
-    except Exception:
-        pass
-
-
-async def donate(message: types.Message, config):
-    title_text = "Премиум подписка"
-    desc_text = "Оформление премиум подписка в @Jammymusic"
-    await message.bot.send_invoice(chat_id=message.chat.id,
-                                   title=title_text,
-                                   description=desc_text,
-                                   payload='invoice',
-                                   provider_token=config.tg_bot.payment_token,
-                                   currency='RUB',
-                                   prices=[types.LabeledPrice('Премиум подписка', 69*100)])
+        await message_bot_func(text, reply_markup=buy_subscription_keyboard_sub)
 
 
 async def success_donate(query: PreCheckoutQuery, state: FSMContext, db: Database):
@@ -95,33 +57,63 @@ async def success_donate(query: PreCheckoutQuery, state: FSMContext, db: Databas
 
 
 async def success_donate_msg(message: types.Message):
-    await message.answer("Поздравляем, вы оформили подписку на нашего бота, приятного пользования!")
+    await message.answer("Поздравляем, вы оформили премиум-подписку на нашего бота, приятного пользования!")
 
 
 async def show_my_subscriptions(cq: types.CallbackQuery, db: Database):
-    subscriptions = await db.select_all_user_subscriptions(cq.from_user.id, datetime.now())
-    if not subscriptions:
-        await cq.answer("К сожалению, у вас нет премиума")
-        return
+    subscription = await db.select_user_active_subscription(cq.from_user.id, datetime.now())
+    sum_of_sub_days = await db.group_all_valid_subscriptions_in_queue(cq.from_user.id)
+    # if not subscription and not subscriptions_in_queue:
+    #     await cq.answer("К сожалению, у вас нет премиума")
+    #     return
 
-    msg_text = "<b>Ваши активные подписки:</b>\n"
-    msg_text = await run_blocking_io(format_subscriptions_to_msg_text, subscriptions, msg_text)
-    await cq.message.answer(msg_text)
+    if not subscription:
+        msg_text = f"<b>В данный момент премиум не активирован.</b>"
+    else:
+        subscription_date_end = subscription['subscription_date_end']
+        if sum_of_sub_days:
+            subscription_date_end += timedelta(sum_of_sub_days)
+
+        msg_text = f"<b>Активирован премиум:</b> {subscription['subscription_date_start']} - " \
+                   f"{subscription_date_end}\n"
+    # if sum_of_sub_days:
+    #     msg_text += f"Доступно {sum_of_sub_days} дней премиума (активируется автоматически)"
+
+    # msg_text = await run_blocking_io(format_subscriptions_to_msg_text, subscriptionn, msg_text)
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="↩️ Назад",
+                              callback_data=action_callback.new(cur_action="back_to_sub_menu"))]
+    ])
+    await cq.message.edit_text(msg_text, reply_markup=reply_markup)
 
 
-def format_subscriptions_to_msg_text(subscriptions: [asyncpg.Record], msg_text="") -> str:
-    try:
-        for num, sub in enumerate(subscriptions, start=1):
-            msg_text += f'Подписка #{num}. {sub["subscription_date_start"]} - {sub["subscription_date_end"]}\n'
-    except KeyError as exc:
-        raise exc
-    finally:
-        return msg_text
+# def format_subscriptions_to_msg_text(subscriptions: [asyncpg.Record], msg_text="") -> str:
+#     try:
+#         for num, sub in enumerate(subscriptions, start=1):
+#             msg_text += f'Подписка #{num}. {sub["subscription_date_start"]} - {sub["subscription_date_end"]}\n'
+#     except KeyError as exc:
+#         raise exc
+#     finally:
+#         return msg_text
 
+async def buy_subscription_button_func(cq: types.CallbackQuery, config):
+    title_text = "Премиум подписка"
+    desc_text = "Оформление премиум подписки в @jammy_music_bot"
+    await cq.bot.send_invoice(chat_id=cq.from_user.id,
+                              title=title_text,
+                              description=desc_text,
+                              payload='invoice',
+                              provider_token=config.tg_bot.payment_token,
+                              currency='RUB',
+                              prices=[types.LabeledPrice('Премиум подписка', 69 * 100)])
 
 def register_payment(dp: Dispatcher):
     dp.register_callback_query_handler(show_my_subscriptions,
                                        action_callback.filter(cur_action="show_my_subscriptions"), state="*")
+    dp.register_callback_query_handler(my_subscription_button_func,
+                                       action_callback.filter(cur_action="back_to_sub_menu"), state="*")
+    dp.register_callback_query_handler(buy_subscription_button_func,
+                                       action_callback.filter(cur_action="buy_subscription"), state="*")
     dp.register_pre_checkout_query_handler(success_donate,
                                            state="*")
     dp.register_message_handler(success_donate_msg, content_types=ContentType.SUCCESSFUL_PAYMENT, state="*")
