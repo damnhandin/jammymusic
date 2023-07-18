@@ -27,19 +27,53 @@ async def admin_sending(message, state):
     await state.update_data(msg_to_delete_reply=msg_to_delete_reply)
 
 
-async def admin_get_media_group_to_sending(message):
-    await message.answer("К сожалению бот не может отправлять медиагруппы")
+async def admin_get_media_group_to_sending(message: types.Message, state: FSMContext, db: Database):
+    await state.reset_state(with_data=False)
+    data = await state.get_data()
+
+    await state.reset_data()
+    users = await db.select_all_users()
+
+    media = types.MediaGroup()
+    if message.photo:
+        try:
+            for photo in message.photo:
+                media.attach_photo(photo=photo["file_id"], caption=photo["caption"])
+        except Exception:
+            await message.answer("К сожалению бот не может отправить медиагруппу")
+            return
+    if message.video:
+        try:
+            for video in message.video:
+                media.attach_video(video=video["file_id"], caption=video["caption"])
+        except Exception:
+            await message.answer("К сожалению бот не может отправить эту медиагруппу")
+            return
+    print(users)
+    count = 0
+    for user in users:
+        count += 1
+        if count % 30 == 0:
+            await asyncio.sleep(30)
+        try:
+            await message.bot.send_media_group(chat_id=user["telegram_id"], media=media)
+            # await message.send_copy(chat_id=user["telegram_id"])
+        except aiogram.exceptions.BotBlocked:
+            continue
+        except aiogram.exceptions.ToMuchMessages:
+            await asyncio.sleep(30)
 
 
 async def admin_get_msg_to_sending(message: types.Message, state: FSMContext, db: Database):
     await state.reset_state(with_data=False)
     data = await state.get_data()
-    msg_to_delete_reply: types.Message = data["msg_to_delete_reply"]
-    try:
-        await msg_to_delete_reply.delete_reply_markup()
-    except:
-        pass
+    # msg_to_delete_reply: types.Message = data["msg_to_delete_reply"]
+    # try:
+    #     await msg_to_delete_reply.delete_reply_markup()
+    # except:
+    #     pass
     await state.reset_data()
+
     users = await db.select_all_users()
     print(users)
     count = 0

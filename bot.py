@@ -21,6 +21,7 @@ from tgbot.handlers.shazam import register_shazam
 from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.text_button_registration import text_button_registration
 from tgbot.handlers.thanks_to_devs import register_thanks_to_devs_handlers
+from tgbot.handlers.update_message_func import register_update
 from tgbot.handlers.user import register_user
 from tgbot.middlewares.album import AlbumMiddleware
 from tgbot.middlewares.environment import EnvironmentMiddleware
@@ -94,6 +95,7 @@ def register_all_handlers(dp, db):
     register_payment(dp)
     text_button_registration(dp)
     register_admin(dp)
+    register_update(dp)
     register_user(dp)
     register_similar_songs_search(dp)
     register_shazam(dp)
