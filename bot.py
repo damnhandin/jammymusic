@@ -56,8 +56,8 @@ async def delete_all_not_valid_subs(db):
     sql = """
     SELECT * FROM active_subscriptions WHERE subscription_date_end < $1;
     """
-    non_valid_subs = await db.execute(sql, fetch=True)
     current_date = datetime.now()
+    non_valid_subs = await db.execute(sql, current_date, fetch=True)
     for user in non_valid_subs:
         await db.activate_user_sub(user["telegram_id"], current_date)
 
@@ -70,8 +70,11 @@ async def regular_functions(db: Database):
 async def setup_regular_function(db: Database, start_timeout=1, timer_delay=60):
     await asyncio.sleep(start_timeout)
     while True:
-        print(1)
-        await regular_functions(db)
+        logging.info("Start regular function")
+        try:
+            await regular_functions(db)
+        except Exception as exc:
+            raise (exc, Exception("Error in regular function"))
         await asyncio.sleep(timer_delay)
 
 
