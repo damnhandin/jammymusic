@@ -1,11 +1,17 @@
 from aiogram import Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile
 from aiogram.utils.exceptions import MessageIsTooLong
+from pytube import YouTube, Stream
+from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import VideosSearch
 from ytmusicapi import YTMusic
 
+import io
+
 from tgbot.handlers.user import run_blocking_io, run_cpu_bound
-from tgbot.keyboards.callback_datas import video_callback
+from tgbot.keyboards.callback_datas import video_callback, action_callback
+
+import re
 
 
 def filter_songs_without_correct_duration(video_searcher, searched_music=None):
@@ -49,21 +55,61 @@ def convert_search_results_to_reply_markup(search_results):
 
 async def search_music_func(mes: types.Message):
     # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
-    yt: YTMusic = YTMusic()
-    video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
-    search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
-    search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
-    if not search_results:
-        await mes.answer("Никаких совпадений по запросу.")
+    pattern = r"(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|watch\?(?:.*&)?v=|" \
+              r"shorts\/|playlist\?list=))([a-zA-Z0-9_-]+)"
+    match = re.match(pattern, mes.text)
+    if match:
+        yt: YTMusic = YTMusic()
+        search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 1))
+        if not search_results:
+            await mes.answer("Никаких совпадений по запросу.")
+            return
+        video_id = search_results.get("video_id")
+        if not video_id:
+            await mes.answer('Произошла ошибка! Повторите поиск!')
+            return
+        yt_link = f"https://www.youtube.com/watch?v={video_id}"
+        try:
+            yt_video = YouTube(yt_link)
+        except:
+            yt_link = f"https://music.youtube.com/watch?v={video_id}"
+            yt_video = YouTube(yt_link)
+        if not yt_video:
+            await mes.answer('Произошла ошибка!')
+            return
+        try:
+            audio: Stream = yt_video.streams.get_audio_only()
+        except AgeRestrictedError:
+            return
+        if audio.filesize > 50000000:
+            return
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton("Добавить в мои плейлисты",
+                                  callback_data=action_callback.new(cur_action="add_to_playlist"))]
+        ])
+        audio_file = io.BytesIO()
+        await run_blocking_io(audio.stream_to_buffer, audio_file)
+        await run_blocking_io(audio_file.seek, 0)
+        await mes.answer_audio(InputFile(audio_file), title=audio.title,
+                               performer=yt_video.author if yt_video.author else None,
+                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
         return
-    reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
+    else:
+        yt: YTMusic = YTMusic()
+        video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
+        search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
+        search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
+        if not search_results:
+            await mes.answer("Никаких совпадений по запросу.")
+            return
+        reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
 
-    answer = f'<b>Результаты по запросу</b>: {mes.text}'
-    # keyboard = InlineKeyboard(*kb_list, row_width=1)
-    try:
-        await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
-    except MessageIsTooLong:
-        await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
+        answer = f'<b>Результаты по запросу</b>: {mes.text}'
+        # keyboard = InlineKeyboard(*kb_list, row_width=1)
+        try:
+            await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
+        except MessageIsTooLong:
+            await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
 
 
 def register_search_music(dp: Dispatcher):
