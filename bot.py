@@ -56,8 +56,8 @@ async def delete_all_not_valid_subs(db):
     sql = """
     SELECT * FROM active_subscriptions WHERE subscription_date_end < $1;
     """
-    non_valid_subs = await db.execute(sql, fetch=True)
     current_date = datetime.now()
+    non_valid_subs = await db.execute(sql, current_date, fetch=True)
     for user in non_valid_subs:
         await db.activate_user_sub(user["telegram_id"], current_date)
 
