@@ -96,13 +96,10 @@ async def admin_get_msg_to_sending_spam(message: types.Message, state, db):
 
 async def update_approved(cq: types.CallbackQuery, state: FSMContext, db: Database):
     data = await state.get_data()
-    print(data)
     await state.reset_state()
     users = await db.select_all_users()
-    print(users)
     try:
         func = await choose_content_and_func_for_sending(data, users, cq.bot)
-        print(f"{func=}")
         if func is not None:
             await func
         else:
@@ -186,7 +183,9 @@ def register_admin_handlers(dp: Dispatcher):
                                 state=JammyMusicStates.spam_sending,
                                 content_types=ContentType.ANY)
     dp.register_callback_query_handler(update_approved, AdminFilter(is_admin=True),
+                                       action_callback.filter("update_sending_approve"),
                                        state=JammyMusicStates.update_sending)
     dp.register_callback_query_handler(spam_approved, AdminFilter(is_admin=True),
+                                       action_callback.filter("spam_sending_approve"),
                                        state=JammyMusicStates.spam_sending)
 
