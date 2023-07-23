@@ -55,7 +55,8 @@ def convert_search_results_to_reply_markup(search_results):
 
 async def search_music_func(mes: types.Message):
     # (self, keyword, offset = 1, mode = 'json', max_results = 20, language = 'en', region = 'US'
-    pattern = r"(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|watch\?(?:.*&)?v=|shorts\/|playlist\?list=))([a-zA-Z0-9_-]+)"
+    pattern = r"(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|watch\?(?:.*&)?v=|" \
+              r"shorts\/|playlist\?list=))([a-zA-Z0-9_-]+)"
     match = re.match(pattern, mes.text)
     if match:
         yt: YTMusic = YTMusic()
@@ -100,14 +101,22 @@ async def search_music_func(mes: types.Message):
     if not search_results:
         await mes.answer("Никаких совпадений по запросу.")
         return
-    reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
+    else:
+        yt: YTMusic = YTMusic()
+        video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
+        search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
+        search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
+        if not search_results:
+            await mes.answer("Никаких совпадений по запросу.")
+            return
+        reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
 
-    answer = f'<b>Результаты по запросу</b>: {mes.text}'
-    # keyboard = InlineKeyboard(*kb_list, row_width=1)
-    try:
-        await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
-    except MessageIsTooLong:
-        await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
+        answer = f'<b>Результаты по запросу</b>: {mes.text}'
+        # keyboard = InlineKeyboard(*kb_list, row_width=1)
+        try:
+            await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
+        except MessageIsTooLong:
+            await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
 
 
 def register_search_music(dp: Dispatcher):
