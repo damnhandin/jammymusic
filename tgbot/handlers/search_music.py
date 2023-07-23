@@ -94,13 +94,6 @@ async def search_music_func(mes: types.Message):
                                    performer=yt_video.author if yt_video.author else None,
                                    reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
         return
-    yt: YTMusic = YTMusic()
-    video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
-    search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
-    search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
-    if not search_results:
-        await mes.answer("Никаких совпадений по запросу.")
-        return
     else:
         yt: YTMusic = YTMusic()
         video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
