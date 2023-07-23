@@ -490,6 +490,8 @@ class Database:
             return False
         return result.get("status")
 
+    # TODO add check_subscriptions_is_non_valid
+
     async def delete_song_from_user_playlist(self, user_telegram_id, playlist_id, song_number):
         result = await self.execute("SELECT * FROM user_playlists WHERE playlist_id=$1 AND user_telegram_id=$2",
                                     playlist_id, user_telegram_id, fetchrow=True)

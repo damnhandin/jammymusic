@@ -67,11 +67,14 @@ async def regular_functions(db: Database):
     await db.activate_unsubs_with_subs_in_queue()
 
 
-async def setup_regular_function(db: Database, start_timeout=1, timer_delay=60):
+async def setup_regular_function(db: Database, start_timeout=45, timer_delay=15):
     await asyncio.sleep(start_timeout)
     while True:
-        print(1)
-        await regular_functions(db)
+        logging.info("Start regular function")
+        try:
+            await regular_functions(db)
+        except Exception as exc:
+            raise (exc, Exception("Error in regular function"))
         await asyncio.sleep(timer_delay)
 
 
