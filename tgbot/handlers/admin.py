@@ -183,9 +183,9 @@ def register_admin_handlers(dp: Dispatcher):
                                 state=JammyMusicStates.spam_sending,
                                 content_types=ContentType.ANY)
     dp.register_callback_query_handler(update_approved, AdminFilter(is_admin=True),
-                                       action_callback.filter("update_sending_approve"),
+                                       action_callback.filter(cur_action="update_sending_approve"),
                                        state=JammyMusicStates.update_sending)
     dp.register_callback_query_handler(spam_approved, AdminFilter(is_admin=True),
-                                       action_callback.filter("spam_sending_approve"),
+                                       action_callback.filter(cur_action="spam_sending_approve"),
                                        state=JammyMusicStates.spam_sending)
 
