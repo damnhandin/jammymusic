@@ -10,7 +10,7 @@ from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_terms_filter import CheckUserFilter
 from tgbot.handlers.add_own_song import register_add_own_music
-from tgbot.handlers.admin import register_admin
+from tgbot.handlers.admin import register_admin_handlers
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
 from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
@@ -90,25 +90,23 @@ def register_all_filters(dp):
 
 
 def register_all_handlers(dp, db):
+    # admin handlers
+    register_admin_handlers(dp)
     # Здесь хендлеры которые не сбрасывают состояние
     register_conditional_terms_handlers(dp)
     register_check_user_handlers(dp, db)
     # Самое главное чтобы в верхних хендлерах не сбрасывалось состояние
     register_payment(dp)
     text_button_registration(dp)
-    register_admin(dp)
     register_user(dp)
     register_similar_songs_search(dp)
     register_shazam(dp)
     register_find_lyrics(dp)
     register_find_song_by_words(dp)
     register_add_own_music(dp)
-    # register_find_song(dp)
-
     register_search_music(dp)
-
-    # register_echo(dp)
     register_thanks_to_devs_handlers(dp)
+
 
 
 async def main():

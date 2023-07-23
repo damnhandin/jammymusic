@@ -91,8 +91,8 @@ async def search_music_func(mes: types.Message):
         await run_blocking_io(audio.stream_to_buffer, audio_file)
         await run_blocking_io(audio_file.seek, 0)
         await mes.answer_audio(InputFile(audio_file), title=audio.title,
-                               performer=yt_video.author if yt_video.author else None,
-                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+                                   performer=yt_video.author if yt_video.author else None,
+                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
         return
     else:
         yt: YTMusic = YTMusic()

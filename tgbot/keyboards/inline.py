@@ -37,3 +37,29 @@ thanks_to_devs_keyboard = InlineKeyboardMarkup(inline_keyboard=[
                               cur_action="thanks_to_devs"
                           ))]
 ])
+
+
+spam_sending_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("✅",
+                              callback_data=action_callback.new(cur_action="spam_sending"))],
+        [InlineKeyboardButton("❌",
+                              callback_data=action_callback.new(cur_action="reset_state_delete_reply"))]
+    ])
+update_sending_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("✅",
+                              callback_data=action_callback.new(cur_action="update_sending"))],
+        [InlineKeyboardButton("❌",
+                              callback_data=action_callback.new(cur_action="reset_state_delete_reply"))]
+    ])
+spam_sending_approve_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("✅",
+                              callback_data=action_callback.new(cur_action="spam_sending_approve"))],
+        [InlineKeyboardButton("❌",
+                              callback_data=action_callback.new(cur_action="reset_state_delete_reply"))]
+    ])
+update_sending_approve_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("✅",
+                              callback_data=action_callback.new(cur_action="update_sending_approve"))],
+        [InlineKeyboardButton("❌",
+                              callback_data=action_callback.new(cur_action="reset_state_delete_reply"))]
+    ])
