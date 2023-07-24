@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from datetime import datetime
 from typing import Union
 
 import aiogram
@@ -102,3 +103,15 @@ async def check_if_user_playlist_is_available(playlist_id, db, user_telegram_id,
 async def check_payment(user_telegram_id, db: Database):
     # TODO Здесь должна быть проверка, если юзер находится в блоклисте
     return True
+
+
+async def check_func_speed(func):
+    """
+    Декоратор для измерения скорости выполнения функции
+    """
+    def wrapper():
+        print("Начинаем измерять скорость работы функции")
+        start_time = datetime.now()
+        func()
+        print(f"Время выполнения: {datetime.now() - start_time} s.")
+    return wrapper()

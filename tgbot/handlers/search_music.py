@@ -13,6 +13,8 @@ from tgbot.keyboards.callback_datas import video_callback, action_callback
 
 import re
 
+from tgbot.misc.misc_funcs import check_func_speed
+
 
 def filter_songs_without_correct_duration(video_searcher, searched_music=None):
     if searched_music is None:
