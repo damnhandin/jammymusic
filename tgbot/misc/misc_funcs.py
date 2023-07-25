@@ -109,9 +109,9 @@ async def check_func_speed(func):
     """
     Декоратор для измерения скорости выполнения функции
     """
-    def wrapper():
+    async def wrapper(*args, **kwargs):
         print("Начинаем измерять скорость работы функции")
-        start_time = datetime.now()
-        func()
-        print(f"Время выполнения: {datetime.now() - start_time} s.")
-    return wrapper()
+        start_time = asyncio.get_event_loop().time()
+        await func()
+        print(f"Время выполнения: {asyncio.get_event_loop().time() - start_time}")
+    return wrapper
