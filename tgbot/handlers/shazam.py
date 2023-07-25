@@ -31,8 +31,9 @@ async def shazam_get_voice_message(message: types.Message):
     try:
         text = f"{song['subtitle']} - {song['title']}"
     except KeyError:
+        await message.answer("Я не смог распознать песню")
         return
-    await message.answer(f"Это {text}")
+    await message.answer(f"Это <code>{text}</code>")
 
     yt: YTMusic = YTMusic()
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
