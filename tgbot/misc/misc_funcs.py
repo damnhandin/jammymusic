@@ -105,13 +105,13 @@ async def check_payment(user_telegram_id, db: Database):
     return True
 
 
-async def check_func_speed(func):
+def check_func_speed(func):
     """
     Декоратор для измерения скорости выполнения функции
     """
     async def wrapper(*args, **kwargs):
         print("Начинаем измерять скорость работы функции")
-        start_time = asyncio.get_event_loop().time()
-        await func()
-        print(f"Время выполнения: {asyncio.get_event_loop().time() - start_time}")
+        start_time = datetime.now()
+        await func(*args)
+        print(f"Время выполнения: {datetime.now() - start_time}")
     return wrapper

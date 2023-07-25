@@ -57,38 +57,39 @@ def convert_search_results_to_reply_markup(search_results):
 
 @check_func_speed
 async def search_music_func(mes: types.Message):
+    try:
     # Сначала идет проверка по видео гет, потом добавлю плейлист гет
-    video = Video.get(mes.text, mode=ResultMode.dict)
-    video_id = video["id"]
-    if video_id:
-        yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        try:
-            yt_video = YouTube(yt_link)
-        except:
-            yt_link = f"https://music.youtube.com/watch?v={video_id}"
-            yt_video = YouTube(yt_link)
-        if not yt_video:
-            await mes.answer('Произошла ошибка!')
+        video = Video.get(mes.text, mode=ResultMode.dict, get_upload_date=True)
+        video_id = video["id"]
+        if video_id:
+            yt_link = f"https://www.youtube.com/watch?v={video_id}"
+            try:
+                yt_video = YouTube(yt_link)
+            except:
+                yt_link = f"https://music.youtube.com/watch?v={video_id}"
+                yt_video = YouTube(yt_link)
+            if not yt_video:
+                await mes.answer('Произошла ошибка!')
+                return
+            try:
+                audio: Stream = yt_video.streams.get_audio_only()
+            except AgeRestrictedError:
+                return
+            if audio.filesize > 50000000:
+                await mes.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
+                return
+            reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton("Добавить в мои плейлисты",
+                                      callback_data=action_callback.new(cur_action="add_to_playlist"))]
+            ])
+            audio_file = io.BytesIO()
+            await run_blocking_io(audio.stream_to_buffer, audio_file)
+            await run_blocking_io(audio_file.seek, 0)
+            await mes.answer_audio(InputFile(audio_file), title=audio.title,
+                                   performer=yt_video.author if yt_video.author else None,
+                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
             return
-        try:
-            audio: Stream = yt_video.streams.get_audio_only()
-        except AgeRestrictedError:
-            return
-        if audio.filesize > 50000000:
-            await mes.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
-            return
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("Добавить в мои плейлисты",
-                                  callback_data=action_callback.new(cur_action="add_to_playlist"))]
-        ])
-        audio_file = io.BytesIO()
-        await run_blocking_io(audio.stream_to_buffer, audio_file)
-        await run_blocking_io(audio_file.seek, 0)
-        await mes.answer_audio(InputFile(audio_file), title=audio.title,
-                               performer=yt_video.author if yt_video.author else None,
-                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
-        return
-    else:
+    except:
         yt: YTMusic = YTMusic()
         video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
         search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
