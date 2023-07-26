@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Union
 
@@ -318,8 +319,11 @@ class Database:
         for user in all_unsubs:
             try:
                 await self.activate_user_sub(user["telegram_id"], current_date)
-            except:
+            except Exception as exc:
+                logging.info(f'Произошла ошибка в activate_unsubs_with_subs_in_queue с пользователем '
+                             f'{user["telegram_id"]}. Ошибка: {exc}')
                 continue
+
     async def select_user_playlist(self, playlist_id):
         if type(playlist_id) is not int:
             playlist_id = int(playlist_id)
