@@ -6,8 +6,9 @@ from typing import Union
 import aiogram
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InputMedia
+from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 
+from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound
 from tgbot.models.db_utils import Database
 
@@ -43,6 +44,45 @@ async def convert_album_to_media_group(album: [types.Message], media_group=None)
 
         media_group.attach(InputMedia(media=file_id, caption=media["caption"], type=media.content_type))
     return media_group
+
+
+def convert_search_results_to_reply_markup(search_results):
+    reply_markup = InlineKeyboardMarkup()
+    for res in search_results:
+        if res.get("id"):
+            video_id = res.get("id")
+            cur_emoji = "🎵"
+            song_title = res.get("title")
+        else:
+            video_id = res.get("videoId")
+            cur_emoji = "🎶"  # 🎶🎵
+            song_artists = ", ".join([artist.get("name") for artist in res.get("artists")])
+            if song_artists:
+                song_title = f"{song_artists} - {res['title']}"
+            else:
+                song_title = res["title"]
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
+                                              callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
+def filter_songs_without_correct_duration(video_searcher, searched_music=None):
+    if searched_music is None:
+        searched_music = list()
+    songs_limit = 3
+    while len(searched_music) < songs_limit:
+        result = video_searcher.result().get("result")
+        if not result:
+            break
+        for song in result:
+            if song["duration"] != "LIVE" and song["duration"] is not None \
+                    and ("hours" not in song["accessibility"]["duration"] and
+                         "hour" not in song["accessibility"]["duration"]):
+                searched_music.append(song)
+            if len(searched_music) >= songs_limit:
+                return searched_music
+        video_searcher.next()
+    return searched_music
 
 
 async def choose_content_and_func_for_sending(data, users, bot):

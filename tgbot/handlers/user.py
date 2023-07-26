@@ -97,15 +97,16 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
+        # TODO: sync func
         audio: Stream = yt_video.streams.get_audio_only()
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
         return
     if audio.filesize > 50000000:
-        await cq.answer('Размер аудио слишком большой, невозможно отправить')
+        await cq.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
         return
     try:
-        await cq.answer("Ищем информацию по данному запросу!")
+        await cq.answer("Ищу информацию по данному запросу!")
     except InvalidQueryID:
         await cq.message.answer("Ищем информацию по данному запросу!")
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
@@ -119,10 +120,6 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
                                   performer=yt_video.author if yt_video.author else None,
                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
-    # try:
-    #     await cq.message.delete()
-    # except Exception:
-    #     pass
 
 
 async def add_to_playlist(cq: types.CallbackQuery, playlist_pg, state, db):
