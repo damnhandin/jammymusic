@@ -10,6 +10,7 @@ import io
 
 from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.callback_datas import action_callback
+from tgbot.keyboards.inline import music_msg_keyboard
 
 from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter_songs_without_correct_duration
 
@@ -21,11 +22,11 @@ async def search_music_func(mes: types.Message):
         if not video_id:
             raise Exception
         if video_id:
-            yt_link = f"https://www.youtube.com/watch?v={video_id}"
+            yt_link = f"https://music.youtube.com/watch?v={video_id}"
             try:
                 yt_video = YouTube(yt_link)
             except:
-                yt_link = f"https://music.youtube.com/watch?v={video_id}"
+                yt_link = f"https://www.youtube.com/watch?v={video_id}"
                 yt_video = YouTube(yt_link)
             if not yt_video:
                 raise Exception
@@ -40,16 +41,12 @@ async def search_music_func(mes: types.Message):
             if audio.filesize > 50000000:
                 await mes.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
                 return
-            reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton("Добавить в мои плейлисты",
-                                      callback_data=action_callback.new(cur_action="add_to_playlist"))]
-            ])
             audio_file = io.BytesIO()
             await run_blocking_io(audio.stream_to_buffer, audio_file)
             await run_blocking_io(audio_file.seek, 0)
             await mes.answer_audio(InputFile(audio_file), title=audio.title,
                                    performer=yt_video.author if yt_video.author else None,
-                                   reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+                                   reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
             return
     except Exception:
         yt: YTMusic = YTMusic()

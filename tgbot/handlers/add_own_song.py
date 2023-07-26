@@ -4,6 +4,7 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters import MediaGroupFilter
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, MediaGroup
 from tgbot.keyboards.callback_datas import action_callback
+from tgbot.keyboards.inline import music_msg_keyboard
 
 
 async def add_own_song_func(message, state):
@@ -22,13 +23,9 @@ async def attach_many_songs_from_album(album: list[types.Message], media_group: 
 
 
 async def get_own_media_group_songs_to_add(message: types.Message, album):
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("Добавить в мои плейлисты",
-                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
-    ])
     media_group = await attach_many_songs_from_album(album)
     await message.answer_media_group(media_group)
-    await message.answer("Теперь выберите плейлист в который хотите добавить аудио", reply_markup=reply_markup)
+    await message.answer("Теперь выберите плейлист в который хотите добавить аудио", reply_markup=music_msg_keyboard)
 
 
 async def get_own_song_to_add(message: types.Message):
@@ -37,11 +34,7 @@ async def get_own_song_to_add(message: types.Message):
         await message.delete()
     except:
         pass
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("Добавить в мои плейлисты",
-                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
-    ])
-    await message.answer_audio(audio=audio, reply_markup=reply_markup)
+    await message.answer_audio(audio=audio, reply_markup=music_msg_keyboard)
 
 
 async def get_own_song_to_add_media_group(message: types.Message):

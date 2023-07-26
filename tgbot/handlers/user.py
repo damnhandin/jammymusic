@@ -16,7 +16,7 @@ from pytube.exceptions import AgeRestrictedError
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
     playlist_action, playlist_navg_callback
-from tgbot.keyboards.inline import confirm_start_keyboard
+from tgbot.keyboards.inline import confirm_start_keyboard, music_msg_keyboard
 from tgbot.keyboards.reply import start_keyboard
 from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber
 from tgbot.misc.misc_funcs import delete_all_messages_from_data, catch_exception_if_playlist_is_not_available
@@ -84,16 +84,18 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     if not video_id:
         await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
         return
-    yt_link = f"https://www.youtube.com/watch?v={video_id}"
     try:
-        yt_video = YouTube(yt_link)
-    except:
-        yt_link = f"https://music.youtube.com/watch?v={video_id}"
-        yt_video = YouTube(yt_link)
-    if not yt_video:
+        yt_link = f"https://www.youtube.com/watch?v={video_id}"
+        try:
+            yt_video = YouTube(yt_link)
+        except:
+            yt_link = f"https://music.youtube.com/watch?v={video_id}"
+            yt_video = YouTube(yt_link)
+        if not yt_video:
+            raise Exception
+    except Exception as exc:
         await cq.message.answer('Произошла ошибка!')
-        return
-
+        raise exc
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
@@ -109,17 +111,13 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         await cq.answer("Ищу информацию по данному запросу!")
     except InvalidQueryID:
         await cq.message.answer("Ищем информацию по данному запросу!")
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("Добавить в мои плейлисты",
-                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
-    ])
     # Через буфер
     audio_file = io.BytesIO()
     await run_blocking_io(audio.stream_to_buffer, audio_file)
     await run_blocking_io(audio_file.seek, 0)
     await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
                                   performer=yt_video.author if yt_video.author else None,
-                                  reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+                                  reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
 
 
 async def add_to_playlist(cq: types.CallbackQuery, playlist_pg, state, db):
@@ -243,12 +241,8 @@ async def cancel_creation_playlist(cq, playlist_pg, state, db):
 async def cancel_playlist_func(cq: types.CallbackQuery, callback_data, playlist_pg, db, state):
     await state.reset_state()
     if cq.message.audio:
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("Добавить в мои плейлисты",
-                                  callback_data=action_callback.new(cur_action="add_to_playlist"))]
-        ])
         try:
-            await cq.message.edit_caption("Больше музыки на @jammy_music_bot", reply_markup=reply_markup)
+            await cq.message.edit_caption("Больше музыки на @jammy_music_bot", reply_markup=music_msg_keyboard)
         except:
             pass
     else:
@@ -341,13 +335,9 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
         except LimitTracksInPlaylist:
             await cq.answer("Достигнут лимит на количество треков в одном плейлисте")
         else:
-            reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton("Добавить в мои плейлисты",
-                                      callback_data=action_callback.new(cur_action="add_to_playlist"))]
-            ])
             try:
                 await cq.message.edit_caption("<b>Трек был успешно добавлен</b>\nБольше музыки на @jammy_music_bot",
-                                              reply_markup=reply_markup)
+                                              reply_markup=music_msg_keyboard)
             except:
                 pass
     else:

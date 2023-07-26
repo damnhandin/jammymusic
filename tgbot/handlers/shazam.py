@@ -10,6 +10,7 @@ from pytube.exceptions import AgeRestrictedError
 
 from tgbot.handlers.user import run_blocking_io
 from tgbot.keyboards.callback_datas import action_callback
+from tgbot.keyboards.inline import music_msg_keyboard
 
 
 async def shazam_start_func(message: types.Message, state):
@@ -39,14 +40,15 @@ async def shazam_get_voice_message(message: types.Message):
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
     if not search_results:
         return
-    video_id = search_results.get("video_id")
+    print(search_results)
+    video_id = search_results[0].get("videoId")
     if not video_id:
         return
-    yt_link = f"https://www.youtube.com/watch?v={video_id}"
+    yt_link = f"https://music.youtube.com/watch?v={video_id}"
     try:
         yt_video = YouTube(yt_link)
-    except:
-        yt_link = f"https://music.youtube.com/watch?v={video_id}"
+    except Exception:
+        yt_link = f"https://www.youtube.com/watch?v={video_id}"
         yt_video = YouTube(yt_link)
     if not yt_video:
         return
@@ -56,16 +58,12 @@ async def shazam_get_voice_message(message: types.Message):
         return
     if audio.filesize > 50000000:
         return
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("Добавить в мои плейлисты",
-                              callback_data=action_callback.new(cur_action="add_to_playlist"))]
-    ])
     audio_file = io.BytesIO()
     await run_blocking_io(audio.stream_to_buffer, audio_file)
     await run_blocking_io(audio_file.seek, 0)
     await message.answer_audio(InputFile(audio_file), title=audio.title,
                                performer=yt_video.author if yt_video.author else None,
-                               reply_markup=reply_markup, caption='Больше музыки на @jammy_music_bot')
+                               reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
 
 
 def register_shazam(dp: Dispatcher):

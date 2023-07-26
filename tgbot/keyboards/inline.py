@@ -63,3 +63,8 @@ update_sending_approve_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("❌",
                               callback_data=action_callback.new(cur_action="reset_state_delete_reply"))]
     ])
+
+music_msg_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton("Добавить в мои плейлисты",
+                          callback_data=action_callback.new(cur_action="add_to_playlist"))]
+])
