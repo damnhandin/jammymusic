@@ -1,27 +1,26 @@
 import asyncio
 import datetime
+from datetime import datetime
 from typing import Union
 
 import aiogram
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InputMedia
+from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 
+from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound
 from tgbot.models.db_utils import Database
 
 
 async def admin_sending_func(send_func, receivers, media_content=None):
-    print(send_func)
     count = 0
-    print(receivers)
     for receiver in receivers:
         count += 1
         if count % 30 == 0:
             await asyncio.sleep(30)
         try:
             receiver_telegram_id = receiver.get("telegram_id") or receiver
-            print(receiver_telegram_id)
             if media_content is None:
                 await send_func(chat_id=receiver_telegram_id)
             else:
@@ -44,21 +43,55 @@ async def convert_album_to_media_group(album: [types.Message], media_group=None)
             file_id = file.file_id
 
         media_group.attach(InputMedia(media=file_id, caption=media["caption"], type=media.content_type))
-    print(media_group)
     return media_group
 
 
+def convert_search_results_to_reply_markup(search_results):
+    reply_markup = InlineKeyboardMarkup()
+    for res in search_results:
+        if res.get("id"):
+            video_id = res.get("id")
+            cur_emoji = "🎵"
+            song_title = res.get("title")
+        else:
+            video_id = res.get("videoId")
+            cur_emoji = "🎶"  # 🎶🎵
+            song_artists = ", ".join([artist.get("name") for artist in res.get("artists")])
+            if song_artists:
+                song_title = f"{song_artists} - {res['title']}"
+            else:
+                song_title = res["title"]
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
+                                              callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
+def filter_songs_without_correct_duration(video_searcher, searched_music=None):
+    if searched_music is None:
+        searched_music = list()
+    songs_limit = 3
+    while len(searched_music) < songs_limit:
+        result = video_searcher.result().get("result")
+        if not result:
+            break
+        for song in result:
+            if song["duration"] != "LIVE" and song["duration"] is not None \
+                    and ("hours" not in song["accessibility"]["duration"] and
+                         "hour" not in song["accessibility"]["duration"]):
+                searched_music.append(song)
+            if len(searched_music) >= songs_limit:
+                return searched_music
+        video_searcher.next()
+    return searched_music
+
+
 async def choose_content_and_func_for_sending(data, users, bot):
-    print(f"{data=}")
     message_to_send = data.get("sending_message")
-    print(message_to_send)
-    print("here")
     if message_to_send is not None:
         return admin_sending_func(message_to_send.send_copy, users)
     media_group_to_send = data.get("sending_media_group")
     if media_group_to_send is not None:
         return admin_sending_func(bot.send_media_group, users, media_group_to_send)
-    print("here")
 
 
 async def delete_all_messages_from_data(data: dict):
@@ -110,3 +143,15 @@ async def check_if_user_playlist_is_available(playlist_id, db, user_telegram_id,
 async def check_payment(user_telegram_id, db: Database):
     # TODO Здесь должна быть проверка, если юзер находится в блоклисте
     return True
+
+
+def check_func_speed(func):
+    """
+    Декоратор для измерения скорости выполнения функции
+    """
+    async def wrapper(*args, **kwargs):
+        print("Начинаем измерять скорость работы функции")
+        start_time = datetime.now()
+        await func(*args)
+        print(f"Время выполнения: {datetime.now() - start_time}")
+    return wrapper
