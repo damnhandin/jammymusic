@@ -99,7 +99,7 @@ async def delete_all_messages_from_data(data: dict):
         if isinstance(item, types.Message):
             try:
                 await item.delete()
-            except:
+            except Exception:
                 continue
 
 
@@ -116,7 +116,7 @@ async def catch_exception_if_playlist_is_not_available(target: Union[types.Callb
             try:
                 if isinstance(target, types.CallbackQuery):
                     await target.message.delete_reply_markup()
-            except:
+            except Exception:
                 pass
             finally:
                 await state.reset_state()

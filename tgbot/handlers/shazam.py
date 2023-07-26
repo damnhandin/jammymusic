@@ -1,7 +1,7 @@
 import io
 
 from aiogram import types, Dispatcher
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from aiogram.types import ContentType, InputFile
 from pydub import AudioSegment
 from shazamio import Shazam
 from ytmusicapi import YTMusic
@@ -9,7 +9,6 @@ from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 
 from tgbot.handlers.user import run_blocking_io
-from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import music_msg_keyboard
 
 
@@ -40,7 +39,6 @@ async def shazam_get_voice_message(message: types.Message):
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
     if not search_results:
         return
-    print(search_results)
     video_id = search_results[0].get("videoId")
     if not video_id:
         return

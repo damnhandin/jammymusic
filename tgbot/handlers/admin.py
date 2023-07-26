@@ -29,9 +29,7 @@ async def pre_handler_admin_start_sending_spam(message):
 
 async def pre_handler_admin_start_sending_update(message: Message):
     await message.answer("Вы дейстительно хотите начать рассылку ВСЕМ пользователям?",
-                        reply_markup=update_sending_keyboard)
-    # await message.reply("Привет админ, начать рассылку пользователям об обновлении?",
-    #                     reply_markup=update_sending_keyboard)
+                         reply_markup=update_sending_keyboard)
 
 
 async def admin_start_sending_update(cq: types.CallbackQuery, state: FSMContext):
@@ -52,8 +50,8 @@ async def admin_start_sending_spam(cq: types.CallbackQuery, state: FSMContext):
                             "БЕСПЛАТНЫМ пользователям")
 
 
-async def admin_get_media_group_to_sending_update(message: types.Message, state: FSMContext, album: list[types.Message],
-                                                  db: Database):
+async def admin_get_media_group_to_sending_update(message: types.Message, state: FSMContext,
+                                                  album: list[types.Message]):
     await state.reset_data()
     media_group = types.MediaGroup()
     media_group = await convert_album_to_media_group(album, media_group)
@@ -63,7 +61,7 @@ async def admin_get_media_group_to_sending_update(message: types.Message, state:
                          reply_markup=update_sending_approve_keyboard)
 
 
-async def admin_get_media_group_to_sending_spam(message: types.Message, state, album, db: Database):
+async def admin_get_media_group_to_sending_spam(message: types.Message, state, album):
     await state.reset_data()
     # users = await db.select_all_users_without_sub()
     media_group = types.MediaGroup()
@@ -75,7 +73,7 @@ async def admin_get_media_group_to_sending_spam(message: types.Message, state, a
     # await admin_sending_func(message.bot.send_media_group, users, media_group)
 
 
-async def admin_get_msg_to_sending_update(message: types.Message, state: FSMContext, db: Database):
+async def admin_get_msg_to_sending_update(message: types.Message, state: FSMContext):
     await state.reset_data()
     # users = await db.select_all_users()
     await state.update_data(sending_message=message)
@@ -84,12 +82,10 @@ async def admin_get_msg_to_sending_update(message: types.Message, state: FSMCont
                          reply_markup=update_sending_approve_keyboard)
 
 
-async def admin_get_msg_to_sending_spam(message: types.Message, state, db):
+async def admin_get_msg_to_sending_spam(message: types.Message, state):
     await state.reset_data()
-    users = await db.select_all_users_without_sub()
     await state.update_data(sending_message=message)
     await message.send_copy(chat_id=message.from_user.id)
-    # await admin_sending_func(message.send_copy, users)
     await message.answer("Вы действительно хотите разослать предыдущее сообщение БЕСПЛАТНЫМ пользователям?",
                          reply_markup=spam_sending_approve_keyboard)
 

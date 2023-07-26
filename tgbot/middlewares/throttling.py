@@ -39,6 +39,8 @@ class ThrottlingMiddleware(BaseMiddleware):
         This handler is called when dispatcher receives a message
 
         :param message:
+        :param data:
+        :return:
         """
         # Get current handler
         handler = current_handler.get()

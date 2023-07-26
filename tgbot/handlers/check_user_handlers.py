@@ -7,11 +7,13 @@ from tgbot.models.db_utils import Database
 
 
 async def check_user_callback_query_handler(cq: types.CallbackQuery):
-    await cq.message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard)
+    await cq.message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard,
+                            disable_web_page_preview=False)
 
 
 async def check_user_message_query_handler(message: types.Message):
-    await message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard)
+    await message.answer(BotMessages.messages["cond_terms_text"], reply_markup=accept_terms_keyboard,
+                         disable_web_page_preview=False)
 
 
 def register_check_user_handlers(dp: Dispatcher, db: Database):

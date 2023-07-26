@@ -316,8 +316,10 @@ class Database:
         all_unsubs = await self.select_all_users_without_active_sub_and_with_sub_in_queue()
         current_date = datetime.now()
         for user in all_unsubs:
-            await self.activate_user_sub(user["telegram_id"], current_date)
-
+            try:
+                await self.activate_user_sub(user["telegram_id"], current_date)
+            except:
+                continue
     async def select_user_playlist(self, playlist_id):
         if type(playlist_id) is not int:
             playlist_id = int(playlist_id)

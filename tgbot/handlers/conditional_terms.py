@@ -10,7 +10,7 @@ async def accept_conditional_terms(cq: types.CallbackQuery, db: Database):
     await db.user_accepted_cond_terms(cq.from_user.id)
     try:
         await cq.message.delete()
-    except:
+    except Exception:
         pass
     else:
         await cq.message.answer("Пользовательское соглашение было принято, теперь можешь пользоваться ботом.",

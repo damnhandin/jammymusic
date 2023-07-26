@@ -6,12 +6,11 @@ from tgbot.config import Config
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.states import JammyMusicStates
 from tgbot.handlers.user import run_blocking_io
-from tgbot.keyboards.callback_datas import action_callback
 
 from ytmusicapi import YTMusic
 from pytube import YouTube, Stream
 
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from aiogram.types import ContentType, InputFile
 from pytube.exceptions import AgeRestrictedError
 
 
@@ -43,8 +42,6 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
         except KeyError:
             await message.answer("К сожалению, нам не удалось найти данную песню")
             return
-    print(songs
-          )
     msg_text = await format_songs_title_to_message_text(songs)
     await message.answer(msg_text)
 
@@ -63,7 +60,7 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
     yt_link = f"https://music.youtube.com/watch?v={video_id}"
     try:
         yt_video = YouTube(yt_link)
-    except:
+    except Exception:
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
         yt_video = YouTube(yt_link)
     if not yt_video:

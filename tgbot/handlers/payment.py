@@ -46,7 +46,7 @@ async def success_donate(query: PreCheckoutQuery, state: FSMContext, db: Databas
     await db.add_user_subscription_to_queue_then_activate_if_need(query.from_user.id, datetime.now(), 30)
     try:
         pass
-    except:
+    except Exception:
         error_text = "К сожалению, произошла ошибка, обратитесь к администратору, " \
                      "либо повторите позже"
         await query.bot.answer_pre_checkout_query(query.id, False, error_message=error_text)
@@ -87,15 +87,6 @@ async def show_my_subscriptions(cq: types.CallbackQuery, db: Database):
     await cq.message.edit_text(msg_text, reply_markup=reply_markup)
 
 
-# def format_subscriptions_to_msg_text(subscriptions: [asyncpg.Record], msg_text="") -> str:
-#     try:
-#         for num, sub in enumerate(subscriptions, start=1):
-#             msg_text += f'Подписка #{num}. {sub["subscription_date_start"]} - {sub["subscription_date_end"]}\n'
-#     except KeyError as exc:
-#         raise exc
-#     finally:
-#         return msg_text
-
 async def buy_subscription_button_func(cq: types.CallbackQuery, config):
     title_text = "Премиум подписка"
     desc_text = "Оформление премиум подписки в @jammy_music_bot"
@@ -106,6 +97,7 @@ async def buy_subscription_button_func(cq: types.CallbackQuery, config):
                               provider_token=config.tg_bot.payment_token,
                               currency='RUB',
                               prices=[types.LabeledPrice('Премиум подписка', 69 * 100)])
+
 
 def register_payment(dp: Dispatcher):
     dp.register_callback_query_handler(show_my_subscriptions,

@@ -33,7 +33,7 @@ async def user_confirm_start(cq, state):
     await state.reset_state(with_data=True)
     try:
         await cq.message.delete()
-    except:
+    except Exception:
         pass
     await cq.message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
                             reply_markup=start_keyboard)
@@ -88,7 +88,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
         try:
             yt_video = YouTube(yt_link)
-        except:
+        except Exception:
             yt_link = f"https://music.youtube.com/watch?v={video_id}"
             yt_video = YouTube(yt_link)
         if not yt_video:
@@ -182,7 +182,7 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
             await message.answer(f"Создать плейлист с названием: <b>{message.text}</b>?", reply_markup=reply_markup)
         try:
             await message.delete()
-        except:
+        except Exception:
             pass
     else:
         data = await state.get_data()
@@ -243,7 +243,7 @@ async def cancel_playlist_func(cq: types.CallbackQuery, callback_data, playlist_
     if cq.message.audio:
         try:
             await cq.message.edit_caption("Больше музыки на @jammy_music_bot", reply_markup=music_msg_keyboard)
-        except:
+        except Exception:
             pass
     else:
         try:
@@ -338,7 +338,7 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
             try:
                 await cq.message.edit_caption("<b>Трек был успешно добавлен</b>\nБольше музыки на @jammy_music_bot",
                                               reply_markup=music_msg_keyboard)
-            except:
+            except Exception:
                 pass
     else:
         if callback_data["cur_mode"] == "default":
@@ -431,7 +431,7 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
         return
     try:
         await cq.message.delete()
-    except:
+    except Exception:
         pass
     try:
         playlist_title = data["playlist_title"]
@@ -477,7 +477,6 @@ async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, d
         await state.update_data(msg_to_delete=cq.message, playlist_id=callback_data["playlist_id"])
 
 
-
 async def delete_format_name_from_filename(filename: str):
     index = filename.find(".mp3")
     return filename[:index]
@@ -501,7 +500,7 @@ async def get_music_to_add_to_playlist_media_group(message: types.Message, album
     try:
         await msg_to_delete.delete()
         await message.delete()
-    except:
+    except Exception:
         pass
     await state.reset_data()
     await message.answer("Треки были успешно добавлены в плейлист, если что-то не было добавлено, убедитесь, что вы "
@@ -523,7 +522,7 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
     try:
         await msg_to_delete.delete()
         await message.delete()
-    except:
+    except Exception:
         pass
     await state.reset_data()
     await message.answer("Трек был успешно добавлен в плейлист")
@@ -691,7 +690,7 @@ async def reset_state_delete_reply(cq: types.CallbackQuery, state):
     try:
         await cq.message.delete_reply_markup()
         await cq.answer("Отменено")
-    except:
+    except Exception:
         pass
 
 
@@ -707,6 +706,7 @@ async def page_refresh(cq, callback_data, playlist_pg: PlaylistPaginator, db):
         pass
     finally:
         await cq.answer()
+
 
 def register_user(dp: Dispatcher):
     dp.register_message_handler(user_start, CommandStart())

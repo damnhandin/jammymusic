@@ -1,5 +1,5 @@
 from aiogram import Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile
+from aiogram.types import ContentType, InputFile
 from aiogram.utils.exceptions import MessageIsTooLong
 from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
@@ -9,7 +9,6 @@ from ytmusicapi import YTMusic
 import io
 
 from tgbot.handlers.user import run_blocking_io, run_cpu_bound
-from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import music_msg_keyboard
 
 from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter_songs_without_correct_duration
@@ -25,7 +24,7 @@ async def search_music_func(mes: types.Message):
             yt_link = f"https://music.youtube.com/watch?v={video_id}"
             try:
                 yt_video = YouTube(yt_link)
-            except:
+            except Exception:
                 yt_link = f"https://www.youtube.com/watch?v={video_id}"
                 yt_video = YouTube(yt_link)
             if not yt_video:

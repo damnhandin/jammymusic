@@ -52,13 +52,13 @@ async def get_lyrics(message: types.Message, config: Config, state):
             if lyrics_start_index != -1:
                 song_text = f"{song_text[lyrics_start_index + 6:]}"
             song_text = await run_cpu_bound(remove_pattern_from_string, song_text, r'\d*Embed$')
-        except:
+        except Exception:
             song_text = result.lyrics
             logging.info(f"Ошибка обрезки текста песни msg.text: \n{message.text}")
         if len(song_text) > 4095:
             for num_of_msgs in range(ceil(len(song_text) / 4096)):
                 first_index = num_of_msgs * 4096
-                await message.answer(f"<code>{song_text[first_index: first_index + 4096]}<\code>")
+                await message.answer(f"<code>{song_text[first_index: first_index + 4096]}</code>")
         else:
             await message.answer(f"<code>{song_text}</code>")
     except Exception as exc:

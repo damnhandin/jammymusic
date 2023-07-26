@@ -2,8 +2,7 @@ from typing import Union
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters import MediaGroupFilter
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, MediaGroup
-from tgbot.keyboards.callback_datas import action_callback
+from aiogram.types import ContentType
 from tgbot.keyboards.inline import music_msg_keyboard
 
 
@@ -15,7 +14,7 @@ async def add_own_song_func(message, state):
 
 async def attach_many_songs_from_album(album: list[types.Message], media_group: Union[types.MediaGroup, None] = None):
     if media_group is None:
-        media_group = MediaGroup()
+        media_group = types.MediaGroup()
     for song in album:
         media_group.attach({"media": song.audio.file_id,
                             "type": "audio"})
@@ -32,7 +31,7 @@ async def get_own_song_to_add(message: types.Message):
     audio = message.audio.file_id
     try:
         await message.delete()
-    except:
+    except Exception:
         pass
     await message.answer_audio(audio=audio, reply_markup=music_msg_keyboard)
 
