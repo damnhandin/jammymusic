@@ -175,7 +175,7 @@ class Database:
         return await self.execute(sql, fetch=True)
 
     async def select_all_users_with_sub(self):
-        sql = "SELECT * FROM users INNER JOIN active_subscriptions ON USING(telegram_id);"
+        sql = "SELECT * FROM users INNER JOIN active_subscriptions USING(telegram_id);"
         return await self.execute(sql, fetch=True)
 
     async def select_user(self, **kwargs):
@@ -364,6 +364,20 @@ class Database:
 
     async def count_users(self):
         sql = "SELECT COUNT(*) FROM users"
+        return await self.execute(sql, fetchval=True)
+
+    async def count_users_without_sub(self):
+        sql = """
+        SELECT COUNT(*) 
+        FROM users LEFT JOIN active_subscriptions USING(telegram_id) WHERE sub_id IS NULL;
+        """
+        return await self.execute(sql, fetchval=True)
+
+    async def count_users_with_sub(self):
+        sql = """
+        SELECT COUNT(*) 
+        FROM users INNER JOIN active_subscriptions USING(telegram_id);
+        """
         return await self.execute(sql, fetchval=True)
 
     async def count_song_in_user_playlist(self, playlist_id):

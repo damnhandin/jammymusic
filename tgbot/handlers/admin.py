@@ -20,6 +20,14 @@ async def get_my_id(message):
     await message.answer(f"<b>Ваш телеграм id:</b>\n{message.from_user.id}")
 
 
+async def get_stats(message, db: Database):
+    count_users = await db.count_users()
+    count_free_users = await db.count_users_without_sub()
+    count_sub_users = await db.count_users_with_sub()
+    await message.answer(f"<b>Статистика бота:</b>\nКоличество:\nВсе пользователи: {count_users}\n"
+                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
+
+
 async def pre_handler_admin_start_sending_spam(message):
     await message.answer("Вы действительно хотите начать рассылку БЕСПЛАТНЫМ пользователям?",
                          reply_markup=spam_sending_keyboard)
@@ -141,6 +149,8 @@ def register_admin_handlers(dp: Dispatcher):
     # Все команды должны быть выше остальных хендлеров, что в случае ошибки, можно было использоваться другую команду
     dp.register_message_handler(get_my_id,
                                 commands=["get_my_id"], state="*")
+    dp.register_message_handler(get_stats,
+                                commands=["get_stats"], state="*")
     dp.register_message_handler(check_admin_status,
                                 AdminFilter(is_admin=True), commands=["admin_check"], state="*")
     dp.register_message_handler(pre_handler_admin_start_sending_update,
