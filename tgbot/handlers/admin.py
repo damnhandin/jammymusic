@@ -21,11 +21,11 @@ async def get_my_id(message):
 
 
 async def get_stats(message, db: Database):
-    users = await db.select_all_users()
-    gay_users = await db.select_all_users_without_sub()
-    sub_users = await db.select_all_users_with_sub()
-    await message.answer(f"<b>Статистика бота:</b>\nКоличество:\nВсе пользователи: {len(users)}\n"
-                         f"Бесплатные пользователи: {len(gay_users)}\nПользователи с подпиской: {len(sub_users)}\n")
+    count_users = await db.count_users()
+    count_free_users = await db.count_users_without_sub()
+    count_sub_users = await db.count_users_with_sub()
+    await message.answer(f"<b>Статистика бота:</b>\nКоличество:\nВсе пользователи: {count_users}\n"
+                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
 
 
 async def pre_handler_admin_start_sending_spam(message):

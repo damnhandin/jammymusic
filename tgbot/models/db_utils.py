@@ -366,6 +366,20 @@ class Database:
         sql = "SELECT COUNT(*) FROM users"
         return await self.execute(sql, fetchval=True)
 
+    async def count_users_without_sub(self):
+        sql = """
+        SELECT COUNT(*) 
+        FROM users LEFT JOIN active_subscriptions USING(telegram_id) WHERE sub_id IS NULL;
+        """
+        return await self.execute(sql, fetchval=True)
+
+    async def count_users_with_sub(self):
+        sql = """
+        SELECT COUNT(*) 
+        FROM users INNER JOIN active_subscriptions USING(telegram_id);
+        """
+        return await self.execute(sql, fetchval=True)
+
     async def count_song_in_user_playlist(self, playlist_id):
         return await self.execute("SELECT COUNT(*) FROM track_playlist WHERE playlist_id=$1;", playlist_id,
                                   fetchval=True)
