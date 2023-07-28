@@ -175,7 +175,7 @@ class Database:
         return await self.execute(sql, fetch=True)
 
     async def select_all_users_with_sub(self):
-        sql = "SELECT * FROM users INNER JOIN active_subscriptions ON USING(telegram_id);"
+        sql = "SELECT * FROM users INNER JOIN active_subscriptions USING(telegram_id);"
         return await self.execute(sql, fetch=True)
 
     async def select_user(self, **kwargs):
