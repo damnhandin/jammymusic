@@ -41,6 +41,7 @@ async def init_db(db: Database):
     await db.create_table_track_playlist()
     await db.create_table_thanks_to_devs()
     await db.create_table_premium_free_trials()
+    await db.create_table_transactions_history()
 
     # await db.init_sub_statuses()
 
