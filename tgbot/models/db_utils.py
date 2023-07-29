@@ -158,6 +158,18 @@ class Database:
         """
         await self.execute(sql, execute=True)
 
+    async def create_table_transactions_history(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS transactions_history (
+        transaction_id SERIAL PRIMARY KEY,
+        telegram_payment_id VARCHAR(48) NOT NULL,
+        provider_payment_id VARCHAR(36) NOT NULL,
+        telegram_id BIGINT UNIQUE REFERENCES users(telegram_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+        charge_sum INT NOT NULL
+        );
+        """
+        await self.execute(sql, execute=True)
+
     @staticmethod
     def format_args(sql, parameters: dict):
         sql += " AND ".join([
@@ -258,6 +270,13 @@ class Database:
             await self.add_user_into_free_trials_table(telegram_id, current_date)
             await self.activate_user_sub(telegram_id, current_date)
         return result
+
+    async def add_payment_to_history(self, telegram_payment_id, provider_payment_id, user_tg_id, charge_sum):
+        sql = """
+        INSERT INTO transactions_history (telegram_payment_id, provider_payment_id, telegram_id, charge_sum) 
+        VALUES ($1, $2, $3, $4);
+        """
+        await self.execute(sql, telegram_payment_id, provider_payment_id, user_tg_id, charge_sum, execute=True)
 
     async def add_user_into_free_trials_table(self, telegram_id, current_date):
         sql = """
