@@ -28,6 +28,16 @@ async def get_stats(message, db: Database):
                          f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
 
 
+async def get_commands(message):
+    list_of_commands = "Список актуальных комманд для администраторов:\n" \
+                       "/get_my_id - получить свой id\n" \
+                       "/get_stats - посмотреть статистику бота\n" \
+                       "/admin_check - проверить свой статус администратора\n" \
+                       "/update - начать рассылку все пользователям об обновлении\n" \
+                       "/spam - начать рассылку рекламы"
+    await message.answer(list_of_commands)
+
+
 async def pre_handler_admin_start_sending_spam(message):
     await message.answer("Вы действительно хотите начать рассылку БЕСПЛАТНЫМ пользователям?",
                          reply_markup=spam_sending_keyboard)
@@ -147,6 +157,8 @@ async def spam_approved(cq: types.CallbackQuery, state: FSMContext, db: Database
 def register_admin_handlers(dp: Dispatcher):
     # All commands must be above other handlers
     # Все команды должны быть выше остальных хендлеров, что в случае ошибки, можно было использоваться другую команду
+    dp.register_message_handler(get_commands,
+                                commands=["get_commands"], state="*")
     dp.register_message_handler(get_my_id,
                                 commands=["get_my_id"], state="*")
     dp.register_message_handler(get_stats,
