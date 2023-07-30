@@ -10,6 +10,7 @@ from aiogram.dispatcher.filters import CommandStart, MediaGroupFilter
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType, InputFile, MediaGroup, \
     InputMediaAudio
 from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
+from aiogram.utils.markdown import hcode
 from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 
@@ -294,7 +295,7 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
         tracks = await db.select_user_tracks_from_playlist(telegram_id, playlist_id)
     except PlaylistNotFound:
         raise PlaylistNotFound
-    msg_text += "\n".join(f"{num_track}) {track['track_title']}" for num_track, track in enumerate(tracks,
+    msg_text += "\n".join(hcode(f"{num_track}) {track['track_title']}") for num_track, track in enumerate(tracks,
                                                                                                    start=1))
     return msg_text, reply_markup
 
@@ -374,7 +375,7 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
             try:
                 await cq.message.edit_text(msg_text, reply_markup=reply_markup)
             except MessageNotModified:
-                pass
+                await cq.message.answer(msg_text, reply_markup=reply_markup)
 
 
 async def page_navigation(cq, callback_data, playlist_pg: PlaylistPaginator, db: Database):
