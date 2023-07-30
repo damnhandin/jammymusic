@@ -78,5 +78,7 @@ types_of_premium_keyboard = InlineKeyboardMarkup(inline_keyboard=[
                           callback_data=action_callback.new(cur_action="buy_premium_6_mon"))],
     [InlineKeyboardButton("Купить 12 месяцев",
                           callback_data=action_callback.new(cur_action="buy_premium_12_mon"))],
+    [InlineKeyboardButton(text="↩️ Назад",
+                          callback_data=action_callback.new(cur_action="back_to_sub_menu"))]
 ])
 
