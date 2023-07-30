@@ -157,12 +157,12 @@ async def spam_approved(cq: types.CallbackQuery, state: FSMContext, db: Database
 def register_admin_handlers(dp: Dispatcher):
     # All commands must be above other handlers
     # Все команды должны быть выше остальных хендлеров, что в случае ошибки, можно было использоваться другую команду
-    dp.register_message_handler(get_commands,
-                                commands=["get_commands"], state="*")
     dp.register_message_handler(get_my_id,
                                 commands=["get_my_id"], state="*")
-    dp.register_message_handler(get_stats,
+    dp.register_message_handler(get_stats, AdminFilter(is_admin=True),
                                 commands=["get_stats"], state="*")
+    dp.register_message_handler(get_commands, AdminFilter(is_admin=True),
+                                commands=["get_commands"], state="*")
     dp.register_message_handler(check_admin_status,
                                 AdminFilter(is_admin=True), commands=["admin_check"], state="*")
     dp.register_message_handler(pre_handler_admin_start_sending_update,
