@@ -164,7 +164,7 @@ class Database:
         transaction_id SERIAL PRIMARY KEY,
         telegram_payment_id VARCHAR(48) NOT NULL,
         provider_payment_id VARCHAR(36) NOT NULL,
-        telegram_id BIGINT UNIQUE REFERENCES users(telegram_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+        telegram_id BIGINT REFERENCES users(telegram_id) ON UPDATE CASCADE ON DELETE RESTRICT,
         charge_sum INT NOT NULL
         );
         """

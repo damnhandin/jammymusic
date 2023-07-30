@@ -155,3 +155,51 @@ def check_func_speed(func):
         await func(*args)
         print(f"Время выполнения: {datetime.now() - start_time}")
     return wrapper
+
+
+async def format_invoice(chat_id, callback_data, provider_token):
+    premium_info = callback_data["cur_action"]
+    if premium_info == "buy_premium_2_mon":  # buy_premium_2_mon
+        sub_price = 129
+        sub_desc = "Премиум подписка 2 месяца"
+        payload = '{"premium_days": 60}'
+    elif premium_info == "buy_premium_3_mon":  # buy_premium_3_mon
+        sub_price = 229
+        sub_desc = "Премиум подписка 3 месяца"
+        payload = '{"premium_days": 90}'
+    elif premium_info == "buy_premium_6_mon":  # buy_premium_6_mon
+        sub_price = 329
+        sub_desc = "Премиум подписка 6 месяцев"
+        payload = '{"premium_days": 180}'
+    else:  # buy_premium_12_mon
+        sub_price = 529
+        sub_desc = "Премиум подписка 12 месяцев"
+        payload = '{"premium_days": 365}'
+    provider_data = {
+        "receipt": {
+            "items": [  # Элементы чека (товары/услуги)
+                {
+                    "description": sub_desc,
+                    "quantity": "1",  # Количество# Название товара/услуги
+                    "amount": {  # Стоимость и количество
+                        "value": f"{sub_price}.00",  # Стоимость в копейках или центах (строка)
+                        "currency": "RUB",  # Валюта (ISO код)
+                    },
+                    "vat_code": 1  # В документации без кавычек
+                }
+            ]
+        }
+    }
+    invoice_parameters = {
+        "chat_id": chat_id,
+        "title": sub_desc,
+        "description": "Оформление премиум подписки в @jammy_music_bot",
+        "payload": payload,
+        "provider_token": provider_token,
+        "currency": "RUB",
+        "prices": [types.LabeledPrice(sub_desc, sub_price * 100)],
+        "need_email": True,
+        "send_email_to_provider": True,
+        "provider_data": provider_data
+    }
+    return invoice_parameters
