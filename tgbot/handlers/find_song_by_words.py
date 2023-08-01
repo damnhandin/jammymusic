@@ -53,7 +53,7 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
 
     try:
         first_song = songs[0]
-        yt: YTMusic = YTMusic("./oauth.json")
+        yt: YTMusic = YTMusic()
         search_results = (await run_blocking_io(yt.search, first_song["result"]["full_title"], "songs", None, 1))[0]
     except (IndexError, ValueError):
         return
