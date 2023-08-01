@@ -102,8 +102,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
-        # TODO: sync func
-        audio: Stream = yt_video.streams.get_audio_only()
+        audio: Stream = await run_blocking_io(yt_video.streams.get_audio_only)
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
         return
