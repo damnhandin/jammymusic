@@ -36,7 +36,7 @@ async def shazam_get_voice_message(message: types.Message):
         return
     await message.answer(f"Это {fmt.hcode(text)}")
 
-    yt: YTMusic = YTMusic()
+    yt: YTMusic = YTMusic("./oauth.json")
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
     if not search_results:
         return
