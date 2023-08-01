@@ -49,7 +49,7 @@ async def search_music_func(mes: types.Message):
                                reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
         return
     except Exception:
-        yt: YTMusic = YTMusic(auth="./browser.json")
+        yt: YTMusic = YTMusic("./oauth.json")
         video_searcher = VideosSearch(msg_text, 5, 'ru-RU', 'RU')
         search_results = (await run_blocking_io(yt.search, msg_text, "songs", None, 3))[:6]
         search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
