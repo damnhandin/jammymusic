@@ -16,8 +16,9 @@ from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter
 
 
 async def search_music_func(mes: types.Message):
+    msg_text = fmt.text(mes.text)
     try:
-        video = Video.get(mes.text, mode=ResultMode.dict, get_upload_date=True)
+        video = Video.get(msg_text, mode=ResultMode.dict, get_upload_date=True)
         video_id = video.get("id")
         if not video_id:
             raise Exception
@@ -49,15 +50,15 @@ async def search_music_func(mes: types.Message):
         return
     except Exception:
         yt: YTMusic = YTMusic()
-        video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
-        search_results = (await run_blocking_io(yt.search, mes.text, "songs", None, 3))[:6]
+        video_searcher = VideosSearch(msg_text, 5, 'ru-RU', 'RU')
+        search_results = (await run_blocking_io(yt.search, msg_text, "songs", None, 3))[:6]
         search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
         if not search_results:
             await mes.answer("Никаких совпадений по запросу.")
             return
         reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
 
-        answer = f'{fmt.hbold("Результаты по запросу")}: {mes.text}'
+        answer = f'{fmt.hbold("Результаты по запросу")}: {fmt.hcode(msg_text)}'
         # keyboard = InlineKeyboard(*kb_list, row_width=1)
         try:
             await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)

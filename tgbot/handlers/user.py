@@ -298,7 +298,7 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
         tracks = await db.select_user_tracks_from_playlist(telegram_id, playlist_id)
     except PlaylistNotFound:
         raise PlaylistNotFound
-    msg_text += "\n".join(hcode(f"{num_track}) {track['track_title']}") for num_track, track in enumerate(tracks,
+    msg_text += "\n".join(f"{num_track}) {hcode(track['track_title'])}" for num_track, track in enumerate(tracks,
                                                                                                           start=1))
     return msg_text, reply_markup
 
@@ -331,7 +331,11 @@ async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Dat
         return
     if cq.message.audio:
         try:
-            audio_title = cq.message.audio.title if cq.message.audio.title else cq.message.audio.file_name
+            if hasattr(cq.message.audio, "performer"):
+                artist = f"{cq.message.audio.performer} - "
+            else:
+                artist = ""
+            audio_title = f"{artist}{cq.message.audio.title if cq.message.audio.title else cq.message.audio.file_name}"
             await db.add_track_into_playlist(cq.from_user.id, cq.message.audio.file_id,
                                              audio_title,
                                              callback_data["playlist_id"])
