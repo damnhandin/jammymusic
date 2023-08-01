@@ -1,6 +1,7 @@
 from aiogram import Dispatcher, types
 from aiogram.types import ContentType, InputFile
 from aiogram.utils.exceptions import MessageIsTooLong
+import aiogram.utils.markdown as fmt
 from pytube import YouTube, Stream
 from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import VideosSearch, Video, ResultMode
@@ -20,33 +21,32 @@ async def search_music_func(mes: types.Message):
         video_id = video.get("id")
         if not video_id:
             raise Exception
-        if video_id:
-            yt_link = f"https://music.youtube.com/watch?v={video_id}"
-            try:
-                yt_video = YouTube(yt_link)
-            except Exception:
-                yt_link = f"https://www.youtube.com/watch?v={video_id}"
-                yt_video = YouTube(yt_link)
-            if not yt_video:
-                raise Exception
-            else:
-                await mes.answer("Ищу информацию по данному запросу!")
-            try:
-                # TODO: sync func
-                audio: Stream = yt_video.streams.get_audio_only()
-            except AgeRestrictedError:
-                await mes.answer("Данная музыка ограничена по возрасту")
-                return
-            if audio.filesize > 50000000:
-                await mes.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
-                return
-            audio_file = io.BytesIO()
-            await run_blocking_io(audio.stream_to_buffer, audio_file)
-            await run_blocking_io(audio_file.seek, 0)
-            await mes.answer_audio(InputFile(audio_file), title=audio.title,
-                                   performer=yt_video.author if yt_video.author else None,
-                                   reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
+        yt_link = f"https://music.youtube.com/watch?v={video_id}"
+        try:
+            yt_video = YouTube(yt_link)
+        except Exception:
+            yt_link = f"https://www.youtube.com/watch?v={video_id}"
+            yt_video = YouTube(yt_link)
+        if not yt_video:
+            raise Exception
+        else:
+            await mes.answer("Ищу информацию по данному запросу!")
+        try:
+            # TODO: sync func
+            audio: Stream = await run_blocking_io(yt_video.streams.get_audio_only)
+        except AgeRestrictedError:
+            await mes.answer("Данная музыка ограничена по возрасту")
             return
+        if audio.filesize > 50000000:
+            await mes.answer('Файл слишком большой, я не смогу его отправить')
+            return
+        audio_file = io.BytesIO()
+        await run_blocking_io(audio.stream_to_buffer, audio_file)
+        await run_blocking_io(audio_file.seek, 0)
+        await mes.answer_audio(InputFile(audio_file), title=audio.title,
+                               performer=yt_video.author if yt_video.author else None,
+                               reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
+        return
     except Exception:
         yt: YTMusic = YTMusic()
         video_searcher = VideosSearch(mes.text, 5, 'ru-RU', 'RU')
@@ -57,12 +57,12 @@ async def search_music_func(mes: types.Message):
             return
         reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
 
-        answer = f'<b>Результаты по запросу</b>: {mes.text}'
+        answer = f'{fmt.hbold("Результаты по запросу")}: {mes.text}'
         # keyboard = InlineKeyboard(*kb_list, row_width=1)
         try:
             await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
         except MessageIsTooLong:
-            await mes.answer(f'<b>Результаты по вашему запросу</b>:', reply_markup=reply_markup)
+            await mes.answer(f'{fmt.hbold("Результаты по вашему запросу:")}', reply_markup=reply_markup)
 
 
 def register_search_music(dp: Dispatcher):

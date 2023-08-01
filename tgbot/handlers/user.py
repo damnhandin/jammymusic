@@ -24,6 +24,7 @@ from tgbot.misc.misc_funcs import delete_all_messages_from_data, catch_exception
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
+import aiogram.utils.markdown as fmt
 
 
 async def user_start_with_state(message):
@@ -36,8 +37,9 @@ async def user_confirm_start(cq, state):
         await cq.message.delete()
     except Exception:
         pass
-    await cq.message.answer("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
-                            reply_markup=start_keyboard)
+    await cq.message.answer(
+        fmt.text("Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио."),
+        reply_markup=start_keyboard)
 
 
 async def delete_this_cq_message(cq: types.CallbackQuery):
@@ -148,14 +150,15 @@ async def create_playlist(cq: types.CallbackQuery, callback_data, state):
 
 
 async def get_playlist_title_and_set(message: types.Message, config: Config, state: FSMContext, db):
-    if len(message.text) >= config.misc.playlist_title_length_limit:
+    msg_text = fmt.text(message.text)
+    if len(msg_text) >= config.misc.playlist_title_length_limit:
         msg_to_edit = await message.answer(
             f"Ваше название слишком длинное, максимальная допустимая длина "
             f"{config.misc.playlist_title_length_limit} символов, напишите название снова.")
         await state.update_data(msg_to_edit=msg_to_edit)
         return
     async with state.proxy() as data:
-        data["playlist_title"] = message.text
+        data["playlist_title"] = msg_text
         msg_to_edit = data.get("msg_to_edit")
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("✅",
@@ -171,16 +174,16 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
         if msg_to_edit:
             try:
                 if msg_to_edit.caption:
-                    await msg_to_edit.edit_caption(f"Создать плейлист с названием: <b>{message.text}</b>?",
+                    await msg_to_edit.edit_caption(f"Создать плейлист с названием: {fmt.hbold(msg_text)}?",
                                                    reply_markup=reply_markup)
                 else:
-                    await msg_to_edit.edit_text(f"Создать плейлист с названием: <b>{message.text}</b>?",
+                    await msg_to_edit.edit_text(f"Создать плейлист с названием: {fmt.hbold(msg_text)}?",
                                                 reply_markup=reply_markup)
             except MessageNotModified:
                 pass
 
         else:
-            await message.answer(f"Создать плейлист с названием: <b>{message.text}</b>?", reply_markup=reply_markup)
+            await message.answer(f"Создать плейлист с названием: {fmt.hbold(msg_text)}?", reply_markup=reply_markup)
         try:
             await message.delete()
         except Exception:
@@ -192,12 +195,12 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
             return
         if msg_to_edit:
             try:
-                await msg_to_edit.edit_text(f"Изменить название на <b>{message.text}</b>?",
+                await msg_to_edit.edit_text(f"Изменить название на {fmt.hbold(msg_text)}?",
                                             reply_markup=reply_markup)
             except MessageNotModified:
                 pass
         else:
-            await message.answer(f"Изменить название на <b>{message.text}</b>?",
+            await message.answer(f"Изменить название на {fmt.hbold(msg_text)}?",
                                  reply_markup=reply_markup)
 
 
@@ -289,36 +292,37 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
                                                                           ))
         ]
     ])
-    msg_text = f"📝<b>Название:</b>\n{playlist['playlist_title']}\n\n" \
+    msg_text = f"📝<b>Название:</b>\n{fmt.hcode(playlist['playlist_title'])}\n\n" \
                f"🎶<b>Плейлист:</b>\n"
     try:
         tracks = await db.select_user_tracks_from_playlist(telegram_id, playlist_id)
     except PlaylistNotFound:
         raise PlaylistNotFound
     msg_text += "\n".join(hcode(f"{num_track}) {track['track_title']}") for num_track, track in enumerate(tracks,
-                                                                                                   start=1))
+                                                                                                          start=1))
     return msg_text, reply_markup
 
-
-async def generate_edit_menu_text_message(db, playlist, playlist_id, user_telegram_id, msg_text=None):
-    if msg_text is None:
-        msg_text = f"📝<b>Название:</b>\n{playlist['playlist_title']}\n\n" \
-                   f"🎶<b>Плейлист:</b>\n"
-    try:
-        tracks = await db.select_user_tracks_from_playlist(user_telegram_id, playlist_id)
-    except PlaylistNotFound:
-        raise PlaylistNotFound
-    msg_text = await format_tracks_to_numerated_list(tracks, msg_text=msg_text)
-
-    return msg_text
-
-
-async def format_tracks_to_numerated_list(tracks, msg_text=None):
-    if msg_text is None:
-        msg_text = ""
-    msg_text += "\n".join(f"{num_track}) {track['track_title']}" for num_track, track in enumerate(tracks,
-                                                                                                   start=1))
-    return msg_text
+#
+# async def generate_edit_menu_text_message(db, playlist, playlist_id, user_telegram_id, msg_text=None):
+#     if msg_text is None:
+#         msg_text = f"📝<b>Название:</b>\n{fmt.hcode(playlist['playlist_title'])}\n\n" \
+#                    f"🎶<b>Плейлист:</b>\n"
+#     try:
+#         tracks = await db.select_user_tracks_from_playlist(user_telegram_id, playlist_id)
+#     except PlaylistNotFound:
+#         raise PlaylistNotFound
+#     msg_text = await format_tracks_to_numerated_list(tracks, msg_text=msg_text)
+#
+#     return msg_text
+#
+#
+# async def format_tracks_to_numerated_list(tracks, msg_text=None):
+#     if msg_text is None:
+#         msg_text = ""
+#         print(tracks)
+#     msg_text += "\n".join(fmt.hcode(f"{num_track}) {track['track_title']}") for num_track, track in enumerate(tracks,
+#                                                                                                               start=1))
+#     return msg_text
 
 
 async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):

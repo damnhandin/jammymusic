@@ -8,6 +8,7 @@ from aiogram.types import ContentType, PreCheckoutQuery, InlineKeyboardMarkup, I
 from datetime import datetime, timedelta
 
 from aiogram.utils.exceptions import MessageCantBeEdited
+import aiogram.utils.markdown as fmt
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback
@@ -81,13 +82,13 @@ async def show_my_subscriptions(cq: types.CallbackQuery, db: Database):
     sum_of_sub_days = await db.group_all_valid_subscriptions_in_queue(cq.from_user.id)
 
     if not subscription:
-        msg_text = f"<b>В данный момент премиум не активирован.</b>"
+        msg_text = f"{fmt.hbold('В данный момент премиум не активирован.')}"
     else:
         subscription_date_end = subscription['subscription_date_end']
         if sum_of_sub_days:
             subscription_date_end += timedelta(sum_of_sub_days)
 
-        msg_text = f"<b>Активирован премиум:</b> {subscription['subscription_date_start']} - " \
+        msg_text = f"{fmt.hbold('Активирован премиум:')} {subscription['subscription_date_start']} - " \
                    f"{subscription_date_end}\n"
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="↩️ Назад",
@@ -98,7 +99,7 @@ async def show_my_subscriptions(cq: types.CallbackQuery, db: Database):
 
 async def buy_subscription_button_func(cq: types.CallbackQuery):
 
-    message_text = "<b>Виды премиума, которые вы можете приобрести:</b>\n" \
+    message_text = f"{fmt.hbold('Виды премиума, которые вы можете приобрести:')}\n" \
                    "2 месяца — 129 рублей\n" \
                    "4 месяца — 229 <s>258</s> рублей (-12% OFF)\n" \
                    "6 месяцев — 329 <s>387</s> рублей (-15% OFF)\n" \

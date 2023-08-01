@@ -4,6 +4,7 @@ from math import ceil
 
 from aiogram import types, Dispatcher
 from aiogram.types import ContentType
+import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
 from ytmusicapi import YTMusic
 
@@ -25,42 +26,43 @@ def remove_pattern_from_string(text, pattern):
 
 async def get_lyrics(message: types.Message, config: Config, state):
     await state.reset_state()
+    msg_text = fmt.text(message.text)
     try:
-        tracks: list[dict] = YTMusic().search(query=message.text, filter="songs", limit=1)
+        tracks: list[dict] = YTMusic().search(query=msg_text, filter="songs", limit=1)
         if not tracks:
-            song_title = message.text
+            song_title = msg_text
             song_artists = ""
         else:
             track = tracks[0]
-            song_title = track["title"]
-            song_artists = ", ".join([artist.get("name") for artist in track.get("artists")])
+            song_title = fmt.text(track["title"])
+            song_artists = fmt.text(", ".join([artist.get("name") for artist in track.get("artists")]))
         lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
-        result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists if song_artists else "")
+        result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists, get_full_info=False)
         if not result:
-            song_title = message.text
+            song_title = msg_text
             song_artists = ""
-            result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists if song_artists else "")
+            result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists)
             if not result:
-                await message.answer("Песня не было найдена")
+                await message.answer("Мне не удалось найти песню")
                 return
         # song_text = result.lyrics[result.lyrics.find("\n"):]
         try:
             # song_text = result.lyrics[result.lyrics.find("Contributors") + 12:]
             # await message.answer(song_text)
-            song_text = result.lyrics
+            song_text = fmt.text(result.lyrics)
             lyrics_start_index = song_text.find('Lyrics')
             if lyrics_start_index != -1:
                 song_text = f"{song_text[lyrics_start_index + 6:]}"
             song_text = await run_cpu_bound(remove_pattern_from_string, song_text, r'\d*Embed$')
         except Exception:
             song_text = result.lyrics
-            logging.info(f"Ошибка обрезки текста песни msg.text: \n{message.text}")
+            logging.info(f"Ошибка обрезки текста песни msg.text: \n{msg_text}")
         if len(song_text) > 4095:
             for num_of_msgs in range(ceil(len(song_text) / 4096)):
                 first_index = num_of_msgs * 4096
-                await message.answer(f"<code>{song_text[first_index: first_index + 4096]}</code>")
+                await message.answer(f"{fmt.hcode(song_text[first_index: first_index + 4096])}")
         else:
-            await message.answer(f"<code>{song_text}</code>")
+            await message.answer(f"{fmt.hcode(song_text)}")
     except Exception as exc:
         await message.answer("К сожалению, нам не удалось найти текст данной песни")
         raise exc

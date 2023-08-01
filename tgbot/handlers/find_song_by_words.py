@@ -2,6 +2,7 @@ from aiogram import types, Dispatcher
 import lyricsgenius
 import io
 
+import aiogram.utils.markdown as fmt
 from tgbot.config import Config
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.states import JammyMusicStates
@@ -20,10 +21,12 @@ async def find_song_by_words(message: types.Message):
 
 
 async def format_songs_title_to_message_text(data):
-    msg_text = "<b>Результаты по вашему запросу:</b>\n"
+    msg_text = f"{fmt.hbold('Результаты по вашему запросу:')}\n"
     for item in data:
         try:
-            msg_text += f"<code>{(item['result']['artist_names'])} - {item['result']['title_with_featured']}</code>\n"
+            artist_names = item['result']['artist_names']
+            song_title = item['result']['title_with_featured']
+            msg_text += f"{fmt.hcode(artist_names + song_title)}\n"
         except KeyError:
             continue
     return msg_text
@@ -32,29 +35,31 @@ async def format_songs_title_to_message_text(data):
 async def get_text_to_find_song(message: types.Message, config: Config, state):
     await state.reset_state()
     lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
-    result = lyrics_genius.search_lyrics(message.text, per_page=3)
+    msg_text = fmt.text(message.text)
+    result = lyrics_genius.search_lyrics(msg_text, per_page=3)
     if not result:
-        await message.answer("К сожалению, нам не удалось найти данную песню")
+        await message.answer("К сожалению, мне не удалось найти данную песню")
         return
     else:
         try:
             songs = result["sections"][0]["hits"]
+            if not songs:
+                raise KeyError
         except KeyError:
-            await message.answer("К сожалению, нам не удалось найти данную песню")
+            await message.answer("К сожалению, мне не удалось найти данную песню")
             return
     msg_text = await format_songs_title_to_message_text(songs)
     await message.answer(msg_text)
 
-    # songs = msg_text.split("\n")
     try:
-        first_song = songs[1]
+        first_song = songs[0]
         yt: YTMusic = YTMusic()
         search_results = (await run_blocking_io(yt.search, first_song["result"]["full_title"], "songs", None, 1))[0]
     except (IndexError, ValueError):
         return
     if not search_results:
         return
-    video_id = search_results.get("video_id")
+    video_id = search_results.get("videoId")
     if not video_id:
         return
     yt_link = f"https://music.youtube.com/watch?v={video_id}"

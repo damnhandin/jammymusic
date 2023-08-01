@@ -5,6 +5,7 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
+from aiogram.types import ParseMode
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
@@ -119,7 +120,7 @@ async def main():
     config = load_config(".env")
 
     storage = RedisStorage2() if config.tg_bot.use_redis else MemoryStorage()
-    bot = Bot(token=config.tg_bot.token, parse_mode='HTML')
+    bot = Bot(token=config.tg_bot.token, parse_mode=ParseMode.HTML)
     dp = Dispatcher(bot, storage=storage)
     db = Database()
     playlist_paginator = PlaylistPaginator(dp=dp)

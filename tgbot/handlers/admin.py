@@ -2,6 +2,7 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import MediaGroupFilter
 from aiogram.types import Message, ContentType
+import aiogram.utils.markdown as fmt
 
 from tgbot.filters.admin import AdminFilter
 from tgbot.keyboards.callback_datas import action_callback
@@ -17,14 +18,14 @@ async def check_admin_status(message: Message):
 
 
 async def get_my_id(message):
-    await message.answer(f"<b>Ваш телеграм id:</b>\n{message.from_user.id}")
+    await message.answer(f"{fmt.hbold('Ваш телеграм id:')}\n{message.from_user.id}")
 
 
 async def get_stats(message, db: Database):
     count_users = await db.count_users()
     count_free_users = await db.count_users_without_sub()
     count_sub_users = await db.count_users_with_sub()
-    await message.answer(f"<b>Статистика бота:</b>\nКоличество:\nВсе пользователи: {count_users}\n"
+    await message.answer(f"{fmt.hbold('Статистика бота:')}\nКоличество:\nВсе пользователи: {count_users}\n"
                          f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
 
 

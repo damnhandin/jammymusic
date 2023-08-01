@@ -2,6 +2,7 @@ from datetime import datetime
 
 from aiogram import types, Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
+import aiogram.utils.markdown as fmt
 from shazamio.exceptions import FailedDecodeJson
 from ytmusicapi import YTMusic
 
@@ -50,7 +51,8 @@ async def parse_all_related_tracks_to_list_from_yt_music(tracks, shazam: Shazam)
 def format_all_related_tracks_to_text_from_shazam(related_songs) -> str:
     all_related_songs = ""
     for num, related_song in enumerate(related_songs, start=1):
-        all_related_songs += f"{num}) <code>{related_song['subtitle']} - {related_song['title']}</code>\n\n"
+        song_title = fmt.text(f"{related_song['subtitle']} - {related_song['title']}")
+        all_related_songs += f"{num}) {fmt.hcode(song_title)}\n\n"
 
     return all_related_songs
 

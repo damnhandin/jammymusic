@@ -2,6 +2,7 @@ import io
 
 from aiogram import types, Dispatcher
 from aiogram.types import ContentType, InputFile
+import aiogram.utils.markdown as fmt
 from pydub import AudioSegment
 from shazamio import Shazam
 from ytmusicapi import YTMusic
@@ -29,11 +30,11 @@ async def shazam_get_voice_message(message: types.Message):
         return
 
     try:
-        text = f"{song['subtitle']} - {song['title']}"
+        text = fmt.text(f"{song['subtitle']} - {song['title']}")
     except KeyError:
         await message.answer("Я не смог распознать песню")
         return
-    await message.answer(f"Это <code>{text}</code>")
+    await message.answer(f"Это {fmt.hcode(text)}")
 
     yt: YTMusic = YTMusic()
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
