@@ -24,10 +24,10 @@ async def search_music_func(mes: types.Message):
             raise Exception
         yt_link = f"https://music.youtube.com/watch?v={video_id}"
         try:
-            yt_video = YouTube(yt_link)
+            yt_video = YouTube(yt_link, use_oauth=True)
         except Exception:
             yt_link = f"https://www.youtube.com/watch?v={video_id}"
-            yt_video = YouTube(yt_link)
+            yt_video = YouTube(yt_link, use_oauth=True)
         if not yt_video:
             raise Exception
         else:
