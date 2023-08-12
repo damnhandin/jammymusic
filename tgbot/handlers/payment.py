@@ -125,7 +125,7 @@ def register_payment(dp: Dispatcher):
     dp.register_callback_query_handler(user_chose_premium_type_to_buy,
                                        action_callback.filter(cur_action=[
                                            "buy_premium_2_mon",
-                                           "buy_premium_3_mon",
+                                           "buy_premium_4_mon",
                                            "buy_premium_6_mon",
                                            "buy_premium_12_mon"]))
     dp.register_pre_checkout_query_handler(success_donate,

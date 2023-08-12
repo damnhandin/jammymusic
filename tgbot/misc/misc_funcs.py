@@ -163,10 +163,10 @@ async def format_invoice(chat_id, callback_data, provider_token):
         sub_price = 129
         sub_desc = "Премиум подписка 2 месяца"
         payload = '{"premium_days": 60}'
-    elif premium_info == "buy_premium_3_mon":  # buy_premium_3_mon
+    elif premium_info == "buy_premium_4_mon":  # buy_premium_3_mon
         sub_price = 229
-        sub_desc = "Премиум подписка 3 месяца"
-        payload = '{"premium_days": 90}'
+        sub_desc = "Премиум подписка 4 месяца"
+        payload = '{"premium_days": 120}'
     elif premium_info == "buy_premium_6_mon":  # buy_premium_6_mon
         sub_price = 329
         sub_desc = "Премиум подписка 6 месяцев"

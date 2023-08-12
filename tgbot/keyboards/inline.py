@@ -72,8 +72,8 @@ music_msg_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 types_of_premium_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton("Купить 2 месяца",
                           callback_data=action_callback.new(cur_action="buy_premium_2_mon"))],
-    [InlineKeyboardButton("Купить 3 месяца",
-                          callback_data=action_callback.new(cur_action="buy_premium_3_mon"))],
+    [InlineKeyboardButton("Купить 4 месяца",
+                          callback_data=action_callback.new(cur_action="buy_premium_4_mon"))],
     [InlineKeyboardButton("Купить 6 месяцев",
                           callback_data=action_callback.new(cur_action="buy_premium_6_mon"))],
     [InlineKeyboardButton("Купить 12 месяцев",
