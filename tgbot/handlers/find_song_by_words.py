@@ -26,7 +26,7 @@ async def format_songs_title_to_message_text(data):
         try:
             artist_names = item['result']['artist_names']
             song_title = item['result']['title_with_featured']
-            msg_text += f"{fmt.hcode(artist_names + song_title)}\n"
+            msg_text += f"{fmt.hcode(artist_names + ' ' + song_title)}\n"
         except KeyError:
             continue
     return msg_text
