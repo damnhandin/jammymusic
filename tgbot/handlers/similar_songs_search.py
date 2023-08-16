@@ -7,9 +7,9 @@ from shazamio.exceptions import FailedDecodeJson
 from ytmusicapi import YTMusic
 
 from tgbot.handlers.search_music import convert_search_results_to_reply_markup
-from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import RelatedSongsWasNotFound
+from tgbot.misc.misc_funcs import run_blocking_io, run_cpu_bound
 from tgbot.misc.states import JammyMusicStates
 
 from shazamio import Shazam
