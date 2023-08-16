@@ -76,7 +76,7 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         if not yt_video:
             raise Exception
     except Exception as exc:
-        await cq.message.answ)er('Произошла ошибка!')
+        await cq.message.answer('Произошла ошибка!')
         raise exc
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл

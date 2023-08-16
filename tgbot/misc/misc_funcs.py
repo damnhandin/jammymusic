@@ -210,7 +210,7 @@ async def format_invoice(chat_id, callback_data, provider_token):
 
 
 async def get_audio_file_from_yt_video(yt_video: YouTube) -> (io.BytesIO, Stream):
-    streams = await run_blocking_io(yt_video.__getattribute__("streams"))
+    streams = await run_blocking_io(yt_video.__getattribute__,  "streams")
     audio_stream: Stream = await run_blocking_io(streams.get_audio_only)
     if audio_stream.filesize > 50000000:
         raise FileIsTooLarge
