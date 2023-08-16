@@ -1,7 +1,3 @@
-import concurrent.futures
-import io
-
-import asyncio
 from datetime import datetime
 
 from aiogram import Dispatcher, types
@@ -11,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
     InputMediaAudio
 from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
 from aiogram.utils.markdown import hcode
-from pytube import YouTube, Stream
+from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
 
 from tgbot.config import Config
@@ -19,8 +15,9 @@ from tgbot.keyboards.callback_datas import action_callback, playlist_callback, v
     playlist_action, playlist_navg_callback
 from tgbot.keyboards.inline import confirm_start_keyboard, music_msg_keyboard
 from tgbot.keyboards.reply import start_keyboard
-from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber
-from tgbot.misc.misc_funcs import delete_all_messages_from_data, catch_exception_if_playlist_is_not_available
+from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber, FileIsTooLarge
+from tgbot.misc.misc_funcs import delete_all_messages_from_data, catch_exception_if_playlist_is_not_available, \
+    get_audio_file_from_yt_video
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
@@ -64,24 +61,6 @@ async def my_playlists(message: types.Message, playlist_pg, state, db: Database)
         pass
 
 
-async def run_cpu_bound(func, *args):
-    loop = asyncio.get_running_loop()
-    with concurrent.futures.ProcessPoolExecutor() as pool:
-        result = await loop.run_in_executor(
-            pool, func, *args
-        )
-    return result
-
-
-async def run_blocking_io(func, *args):
-    loop = asyncio.get_running_loop()
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        result = await loop.run_in_executor(
-            pool, func, *args
-        )
-    return result
-
-
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     video_id = callback_data["video_id"]
     if not video_id:
@@ -97,28 +76,24 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         if not yt_video:
             raise Exception
     except Exception as exc:
-        await cq.message.answer('Произошла ошибка!')
+        await cq.message.answ)er('Произошла ошибка!')
         raise exc
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
-        # yt_video = await run_blocking_io(yt_video.__getattribute__, 'streams')
-        audio: Stream = await run_blocking_io(yt_video.streams.get_audio_only)
+
+        audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
         return
-    if audio.filesize > 50000000:
+    except FileIsTooLarge:
         await cq.answer('Произошла ошибка! Файл слишком большой, я не смогу его отправить')
         return
     try:
         await cq.answer("Ищу информацию по данному запросу!")
     except InvalidQueryID:
         await cq.message.answer("Ищем информацию по данному запросу!")
-    # Через буфер
-    audio_file = io.BytesIO()
-    await run_blocking_io(audio.stream_to_buffer, audio_file)
-    await run_blocking_io(audio_file.seek, 0)
-    await cq.message.answer_audio(InputFile(audio_file), title=audio.title,
+    await cq.message.answer_audio(InputFile(audio_file), title=audio_stream.title,
                                   performer=yt_video.author if yt_video.author else None,
                                   reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
 

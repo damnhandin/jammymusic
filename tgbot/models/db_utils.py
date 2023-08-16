@@ -360,7 +360,7 @@ class Database:
         return await self.execute(sql, playlist_id, fetch=True)
 
     async def select_user_available_playlist(self, user_telegram_id):
-        sql = "SELECT * FROM user_playlists WHERE user_telegram_id=$1 LIMIT 1;"
+        sql = "SELECT * FROM user_playlists WHERE user_telegram_id=$1 ORDER BY playlist_id ASC LIMIT 1;"
         return await self.execute(sql, user_telegram_id, fetchrow=True)
 
     async def user_accepted_cond_terms(self, telegram_id):

@@ -8,7 +8,7 @@ import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
 from ytmusicapi import YTMusic
 
-from tgbot.handlers.user import run_cpu_bound
+from tgbot.misc.misc_funcs import run_cpu_bound
 from tgbot.misc.states import JammyMusicStates
 from tgbot.config import Config
 import lyricsgenius
@@ -28,7 +28,7 @@ async def get_lyrics(message: types.Message, config: Config, state):
     await state.reset_state()
     msg_text = fmt.text(message.text)
     try:
-        tracks: list[dict] = YTMusic().search(query=msg_text, filter="songs", limit=1)
+        tracks: list[dict] = YTMusic("./oauth.json").search(query=msg_text, filter="songs", limit=1)
         if not tracks:
             song_title = msg_text
             song_artists = ""

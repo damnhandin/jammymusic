@@ -6,11 +6,12 @@ import aiogram.utils.markdown as fmt
 from pydub import AudioSegment
 from shazamio import Shazam
 from ytmusicapi import YTMusic
-from pytube import YouTube, Stream
+from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
 
-from tgbot.handlers.user import run_blocking_io
 from tgbot.keyboards.inline import music_msg_keyboard
+from tgbot.misc.exceptions import FileIsTooLarge
+from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io
 
 
 async def shazam_start_func(message: types.Message, state):
@@ -36,7 +37,7 @@ async def shazam_get_voice_message(message: types.Message):
         return
     await message.answer(f"Это {fmt.hcode(text)}")
 
-    yt: YTMusic = YTMusic()
+    yt: YTMusic = YTMusic("./oauth.json")
     search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
     if not search_results:
         return
@@ -52,15 +53,12 @@ async def shazam_get_voice_message(message: types.Message):
     if not yt_video:
         return
     try:
-        audio: Stream = yt_video.streams.get_audio_only()
+        audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
     except AgeRestrictedError:
         return
-    if audio.filesize > 50000000:
+    except FileIsTooLarge:
         return
-    audio_file = io.BytesIO()
-    await run_blocking_io(audio.stream_to_buffer, audio_file)
-    await run_blocking_io(audio_file.seek, 0)
-    await message.answer_audio(InputFile(audio_file), title=audio.title,
+    await message.answer_audio(InputFile(audio_file), title=audio_stream.title,
                                performer=yt_video.author if yt_video.author else None,
                                reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
 

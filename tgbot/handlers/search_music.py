@@ -2,17 +2,16 @@ from aiogram import Dispatcher, types
 from aiogram.types import ContentType, InputFile
 from aiogram.utils.exceptions import MessageIsTooLong
 import aiogram.utils.markdown as fmt
-from pytube import YouTube, Stream
+from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import VideosSearch, Video, ResultMode
 from ytmusicapi import YTMusic
 
-import io
-
-from tgbot.handlers.user import run_blocking_io, run_cpu_bound
 from tgbot.keyboards.inline import music_msg_keyboard
+from tgbot.misc.exceptions import FileIsTooLarge
 
-from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter_songs_without_correct_duration
+from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter_songs_without_correct_duration, \
+    get_audio_file_from_yt_video, run_blocking_io, run_cpu_bound
 
 
 async def search_music_func(mes: types.Message):
@@ -33,23 +32,19 @@ async def search_music_func(mes: types.Message):
         else:
             await mes.answer("Ищу информацию по данному запросу!")
         try:
-            # TODO: sync func
-            audio: Stream = await run_blocking_io(yt_video.streams.get_audio_only)
+            audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
         except AgeRestrictedError:
             await mes.answer("Данная музыка ограничена по возрасту")
             return
-        if audio.filesize > 50000000:
+        except FileIsTooLarge:
             await mes.answer('Файл слишком большой, я не смогу его отправить')
             return
-        audio_file = io.BytesIO()
-        await run_blocking_io(audio.stream_to_buffer, audio_file)
-        await run_blocking_io(audio_file.seek, 0)
-        await mes.answer_audio(InputFile(audio_file), title=audio.title,
+        await mes.answer_audio(InputFile(audio_file), title=audio_stream.title,
                                performer=yt_video.author if yt_video.author else None,
                                reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
         return
     except Exception:
-        yt: YTMusic = YTMusic()
+        yt: YTMusic = YTMusic("./oauth.json")
         video_searcher = VideosSearch(msg_text, 5, 'ru-RU', 'RU')
         search_results = (await run_blocking_io(yt.search, msg_text, "songs", None, 3))[:6]
         search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)

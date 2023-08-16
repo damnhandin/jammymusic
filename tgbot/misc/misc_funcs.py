@@ -1,5 +1,7 @@
+import concurrent.futures
 import asyncio
 import datetime
+import io
 from datetime import datetime
 from typing import Union
 
@@ -7,9 +9,10 @@ import aiogram
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
+from pytube import Stream, YouTube
 
 from tgbot.keyboards.callback_datas import video_callback
-from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound
+from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIsTooLarge
 from tgbot.models.db_utils import Database
 
 
@@ -163,7 +166,8 @@ async def format_invoice(chat_id, callback_data, provider_token):
         sub_price = 129
         sub_desc = "Премиум подписка 2 месяца"
         payload = '{"premium_days": 60}'
-    elif premium_info == "buy_premium_4_mon":  # buy_premium_3_mon
+
+    elif premium_info == "buy_premium_4_mon":  # buy_premium_4_mon
         sub_price = 229
         sub_desc = "Премиум подписка 4 месяца"
         payload = '{"premium_days": 120}'
@@ -203,3 +207,32 @@ async def format_invoice(chat_id, callback_data, provider_token):
         "provider_data": provider_data
     }
     return invoice_parameters
+
+
+async def get_audio_file_from_yt_video(yt_video: YouTube) -> (io.BytesIO, Stream):
+    streams = await run_blocking_io(yt_video.__getattribute__("streams"))
+    audio_stream: Stream = await run_blocking_io(streams.get_audio_only)
+    if audio_stream.filesize > 50000000:
+        raise FileIsTooLarge
+    audio_file = io.BytesIO()
+    await run_blocking_io(audio_stream.stream_to_buffer, audio_file)
+    await run_blocking_io(audio_file.seek, 0)
+    return audio_file, audio_stream
+
+
+async def run_cpu_bound(func, *args):
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ProcessPoolExecutor() as pool:
+        result = await loop.run_in_executor(
+            pool, func, *args
+        )
+    return result
+
+
+async def run_blocking_io(func, *args):
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        result = await loop.run_in_executor(
+            pool, func, *args
+        )
+    return result

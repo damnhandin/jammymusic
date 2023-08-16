@@ -20,3 +20,7 @@ class WrongSongNumber(Exception):
 
 class RelatedSongsWasNotFound(Exception):
     pass
+
+
+class FileIsTooLarge(Exception):
+    pass
