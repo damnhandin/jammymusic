@@ -114,7 +114,7 @@ async def catch_exception_if_playlist_is_not_available(target: Union[types.Callb
         playlist_id = int(playlist_id)
     try:
         if (await check_if_user_playlist_is_available(playlist_id,
-                                                      db, target.from_user.id, current_date)) is not True:
+                                                      db, target.from_user.id, current_date)) is False:
             await target.answer("Плейлист недоступен")
             try:
                 if isinstance(target, types.CallbackQuery):

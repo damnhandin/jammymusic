@@ -166,7 +166,7 @@ async def get_playlist_title_and_set(message: types.Message, config: Config, sta
     else:
         data = await state.get_data()
         if await catch_exception_if_playlist_is_not_available(message, data["playlist_id"], db,
-                                                              datetime.now(), state) is not True:
+                                                              datetime.now(), state) is False:
             return
         if msg_to_edit:
             try:
@@ -302,7 +302,7 @@ async def generate_edit_playlist_msg(playlist, telegram_id, playlist_id, db, cur
 
 async def choose_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
     if await catch_exception_if_playlist_is_not_available(
-            cq, callback_data["playlist_id"], db, datetime.now(), state) is not True:
+            cq, callback_data["playlist_id"], db, datetime.now(), state) is False:
         return
     if cq.message.audio:
         try:
@@ -391,7 +391,7 @@ async def start_edit_mode(cq, playlist_pg, callback_data, db):
 
 async def change_playlist_title(cq: types.CallbackQuery, callback_data, db, state):
     if await catch_exception_if_playlist_is_not_available(
-            cq, callback_data["playlist_id"], db, datetime.now(), state) is not True:
+            cq, callback_data["playlist_id"], db, datetime.now(), state) is False:
         return
     await JammyMusicStates.get_new_playlist_title.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
@@ -411,7 +411,7 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
     data = await state.get_data()
     await state.reset_state()
     if await catch_exception_if_playlist_is_not_available(cq, data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     try:
         await cq.message.delete()
@@ -443,7 +443,7 @@ async def confirm_edit_playlist(cq, callback_data, state: FSMContext, db):
 
 async def add_music_to_playlist(cq: types.CallbackQuery, callback_data, state, db):
     if await catch_exception_if_playlist_is_not_available(cq, callback_data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     await JammyMusicStates.add_music_to_playlist.set()
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
@@ -470,7 +470,7 @@ async def get_music_to_add_to_playlist_media_group(message: types.Message, album
     await state.reset_state(with_data=False)
     data = await state.get_data()
     if await catch_exception_if_playlist_is_not_available(message, data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     for song in album:
         playlist_id = int(data["playlist_id"])
@@ -495,7 +495,7 @@ async def get_music_to_add_to_playlist(message: types.Message, state: FSMContext
     await state.reset_state(with_data=False)
     data = await state.get_data()
     playlist_id = int(data["playlist_id"])
-    if await catch_exception_if_playlist_is_not_available(message, playlist_id, db, datetime.now(), state) is not True:
+    if await catch_exception_if_playlist_is_not_available(message, playlist_id, db, datetime.now(), state) is False:
         return
     msg_to_delete = data["msg_to_delete"]
     if message.audio.title:
@@ -520,7 +520,7 @@ async def get_unknown_content_to_add_to_playlist(message):
 
 async def delete_playlist(cq: types.CallbackQuery, callback_data, db):
     if await catch_exception_if_playlist_is_not_available(cq, callback_data["playlist_id"], db,
-                                                          datetime.now(), callback_data["playlist_id"]) is not True:
+                                                          datetime.now(), callback_data["playlist_id"]) is False:
         return
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton("✅",
@@ -544,7 +544,7 @@ async def delete_playlist(cq: types.CallbackQuery, callback_data, db):
 async def confirm_delete_playlist(cq: types.CallbackQuery, playlist_pg: PlaylistPaginator,
                                   state, callback_data, db: Database):
     if await catch_exception_if_playlist_is_not_available(cq, callback_data["playlist_id"],
-                                                          db, datetime.now(), state) is not True:
+                                                          db, datetime.now(), state) is False:
         return
     try:
         await db.delete_user_playlist(cq.from_user.id, int(callback_data["playlist_id"]))
@@ -575,7 +575,7 @@ async def back_to_playlist_menu(cq: types.CallbackQuery, callback_data, playlist
 async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg, state, db: Database):
     await state.reset_state()
     if await catch_exception_if_playlist_is_not_available(cq, callback_data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     if cq.message.caption:
         return
@@ -601,7 +601,7 @@ async def back_to_edit_menu(cq: types.CallbackQuery, callback_data, playlist_pg,
 
 async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, state, db: Database):
     if await catch_exception_if_playlist_is_not_available(cq, callback_data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     count_of_songs = await db.count_song_in_user_playlist(int(callback_data["playlist_id"]))
     if count_of_songs == 0:
@@ -628,7 +628,7 @@ async def delete_music_from_playlist(cq: types.CallbackQuery, callback_data, sta
 async def get_number_of_song_to_delete_func(message, playlist_pg, db: Database, state):
     data = await state.get_data()
     if await catch_exception_if_playlist_is_not_available(message, data["playlist_id"], db,
-                                                          datetime.now(), state) is not True:
+                                                          datetime.now(), state) is False:
         return
     try:
         number_song = int(message.text)

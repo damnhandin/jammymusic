@@ -19,7 +19,7 @@ from tgbot.models.db_utils import Database
 
 async def similar_songs_search(message: types.Message, db: Database):
     subscription = await db.check_subscription_is_valid(message.from_user.id, datetime.now())
-    if subscription is not True:
+    if subscription is False:
         await message.answer("Для использования данной функции, необходимо приобрети подписку")
         return
     await JammyMusicStates.shazam_recommendation.set()
