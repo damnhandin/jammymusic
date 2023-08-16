@@ -26,7 +26,7 @@ async def format_songs_title_to_message_text(data):
         try:
             artist_names = item['result']['artist_names']
             song_title = item['result']['title_with_featured']
-            msg_text += f"{fmt.hcode(artist_names + ' ' + song_title)}\n"
+            msg_text += f"{fmt.hcode(artist_names + ' - ' + song_title)}\n"
         except KeyError:
             continue
     return msg_text
@@ -64,10 +64,10 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
         return
     yt_link = f"https://music.youtube.com/watch?v={video_id}"
     try:
-        yt_video = YouTube(yt_link)
+        yt_video = YouTube(yt_link, use_oauth=True)
     except Exception:
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        yt_video = YouTube(yt_link)
+        yt_video = YouTube(yt_link, use_oauth=True)
     if not yt_video:
         return
     try:
