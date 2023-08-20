@@ -86,7 +86,7 @@ async def parse_all_related_tracks_to_inline_buttons(related_tracks) -> types.In
 
 async def find_all_youtube_songs_from_list(songs):
     yt_songs = []
-    yt_music = YTMusic()
+    yt_music = YTMusic(auth="./oauth.json")
     for song in songs:
         try:
             search_query = f"{song.get('subtitle')} - {song.get('title')}"
@@ -105,7 +105,7 @@ async def shazam_recommendation_search(message: types.Message, state):
     shazam = Shazam()
     try:
         # TODO SYNC FUNC
-        tracks = YTMusic().search(query=message.text, filter="songs", limit=1)
+        tracks = YTMusic(auth="./oauth.json").search(query=message.text, filter="songs", limit=1)
         if not tracks:
             raise RelatedSongsWasNotFound
         related_tracks_shazam = await parse_all_related_tracks_to_list_from_yt_music(tracks, shazam)

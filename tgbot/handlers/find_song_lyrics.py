@@ -29,7 +29,7 @@ async def get_lyrics(message: types.Message, config: Config, state):
     msg_text = fmt.text(message.text)
     try:
         # TODO SYNC FUNC
-        tracks: list[dict] = YTMusic().search(query=msg_text, filter="songs", limit=1)
+        tracks: list[dict] = YTMusic(auth="./oauth.json").search(query=msg_text, filter="songs", limit=1)
         if not tracks:
             song_title = msg_text
             song_artists = ""
