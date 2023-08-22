@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+import datetime
 from typing import Union
 
 import asyncpg
@@ -266,7 +266,7 @@ class Database:
         """
         result = await self.execute(sql, telegram_id, sub_days, fetchrow=True)
         if result is not None:
-            current_date = datetime.now()
+            current_date = datetime.datetime.now()
             await self.add_user_into_free_trials_table(telegram_id, current_date)
             await self.activate_user_sub(telegram_id, current_date)
         return result
@@ -291,19 +291,27 @@ class Database:
         result = await self.execute(sql, telegram_id, current_date,
                                     fetchrow=True)
         if result:
-            await self.unsub_user_force(telegram_id, result["sub_id"])
+            await self.unsub_user_force(result["sub_id"], telegram_id)
 
     async def activate_user_sub(self, telegram_id, current_date):
         await self.check_user_sub_then_unsub_if_not_valid(telegram_id, current_date)
         sql = """
-        INSERT INTO active_subscriptions (sub_id, telegram_id, subscription_date_start, subscription_date_end)
-        SELECT sub_id, telegram_id, $2::date, $2::date + sub_days::integer
-        FROM users_subscriptions 
-        WHERE telegram_id=$1 AND sub_status_id=1 AND 
-        NOT EXISTS (SELECT * FROM active_subscriptions WHERE telegram_id=$1) RETURNING *;
+        SELECT sub_id, telegram_id, sub_days
+        FROM users_subscriptions
+        WHERE telegram_id=$1 AND sub_status_id=1 AND
+        NOT EXISTS (SELECT * FROM active_subscriptions WHERE telegram_id=$1);
         """
-        result = await self.execute(sql, telegram_id, current_date, fetchrow=True)
+        result = await self.execute(sql, telegram_id, fetchrow=True)
         if result:
+            sql = """
+            INSERT INTO active_subscriptions (sub_id, telegram_id, subscription_date_start, subscription_date_end)
+            VALUES ($1, $2, $3, $4);
+            """
+            try:
+                await self.execute(sql, result["sub_id"], result["telegram_id"], current_date,
+                                   current_date + datetime.timedelta(days=result["sub_days"]), execute=True)
+            except UniqueViolationError:
+                return
             await self.execute("UPDATE users_subscriptions SET sub_status_id=2 WHERE sub_id=$1",
                                result["sub_id"], execute=True)
 
@@ -334,7 +342,7 @@ class Database:
         :return:
         """
         all_unsubs = await self.select_all_users_without_active_sub_and_with_sub_in_queue()
-        current_date = datetime.now()
+        current_date = datetime.datetime.now()
         for user in all_unsubs:
             try:
                 await self.activate_user_sub(user["telegram_id"], current_date)

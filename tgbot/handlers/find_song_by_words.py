@@ -8,7 +8,6 @@ from tgbot.misc.exceptions import FileIsTooLarge
 from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io
 from tgbot.misc.states import JammyMusicStates
 
-from ytmusicapi import YTMusic
 from pytube import YouTube
 
 from aiogram.types import ContentType, InputFile
@@ -32,7 +31,7 @@ async def format_songs_title_to_message_text(data):
     return msg_text
 
 
-async def get_text_to_find_song(message: types.Message, config: Config, state):
+async def get_text_to_find_song(message: types.Message, config: Config, state, yt_music):
     await state.reset_state()
     lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
     msg_text = fmt.text(message.text)
@@ -53,8 +52,8 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
 
     try:
         first_song = songs[0]
-        yt: YTMusic = YTMusic(auth="./oauth.json")
-        search_results = (await run_blocking_io(yt.search, first_song["result"]["full_title"], "songs", None, 1))[0]
+        search_results = (
+            await run_blocking_io(yt_music.search, first_song["result"]["full_title"], "songs", None, 1))[0]
     except (IndexError, ValueError):
         return
     if not search_results:

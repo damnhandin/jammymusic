@@ -5,7 +5,6 @@ import aiogram.utils.markdown as fmt
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import VideosSearch, Video, ResultMode
-from ytmusicapi import YTMusic
 
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.exceptions import FileIsTooLarge
@@ -14,7 +13,7 @@ from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter
     get_audio_file_from_yt_video, run_blocking_io, run_cpu_bound
 
 
-async def search_music_func(mes: types.Message):
+async def search_music_func(mes: types.Message, yt_music):
     msg_text = fmt.text(mes.text)
     try:
         video = Video.get(msg_text, mode=ResultMode.dict, get_upload_date=True)
@@ -44,9 +43,8 @@ async def search_music_func(mes: types.Message):
                                reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
         return
     except Exception:
-        yt: YTMusic = YTMusic(auth="./oauth.json")
         video_searcher = VideosSearch(msg_text, 5, 'ru-RU', 'RU')
-        search_results = (await run_blocking_io(yt.search, msg_text, "songs", None, 3))[:6]
+        search_results = (await run_blocking_io(yt_music.search, msg_text, "songs", None, 3))[:6]
         search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
         if not search_results:
             await mes.answer("Никаких совпадений по запросу.")
@@ -54,7 +52,6 @@ async def search_music_func(mes: types.Message):
         reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, search_results)
 
         answer = f'{fmt.hbold("Результаты по запросу")}: {fmt.hcode(msg_text)}'
-        # keyboard = InlineKeyboard(*kb_list, row_width=1)
         try:
             await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
         except MessageIsTooLong:

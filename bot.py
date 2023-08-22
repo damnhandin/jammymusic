@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
+from ytmusicapi import YTMusic
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
@@ -81,8 +82,8 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=20)
         await asyncio.sleep(timer_delay)
 
 
-def register_all_middlewares(playlist_paginator, dp, config, db):
-    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
+def register_all_middlewares(playlist_paginator, dp, config, db, yt_music):
+    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db, yt_music=yt_music))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
 
@@ -127,8 +128,8 @@ async def main():
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
-
-    register_all_middlewares(playlist_paginator, dp, config, db)
+    yt_music = YTMusic(auth="./oauth.json")
+    register_all_middlewares(playlist_paginator, dp, config, db, yt_music)
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)

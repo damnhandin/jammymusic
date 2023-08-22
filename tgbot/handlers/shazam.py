@@ -5,7 +5,6 @@ from aiogram.types import ContentType, InputFile
 import aiogram.utils.markdown as fmt
 from pydub import AudioSegment
 from shazamio import Shazam
-from ytmusicapi import YTMusic
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
 
@@ -19,7 +18,7 @@ async def shazam_start_func(message: types.Message, state):
     await message.answer("Отправь мне голосовое сообщение, а я постараюсь узнать трек")
 
 
-async def shazam_get_voice_message(message: types.Message):
+async def shazam_get_voice_message(message: types.Message, yt_music):
     shazam = Shazam()
     voice_file = io.BytesIO()
     await message.voice.download(destination_file=voice_file)
@@ -37,8 +36,7 @@ async def shazam_get_voice_message(message: types.Message):
         return
     await message.answer(f"Это {fmt.hcode(text)}")
 
-    yt: YTMusic = YTMusic(auth="./oauth.json")
-    search_results = (await run_blocking_io(yt.search, text, "songs", None, 1))
+    search_results = (await run_blocking_io(yt_music.search, text, "songs", None, 1))
     if not search_results:
         return
     video_id = search_results[0].get("videoId")

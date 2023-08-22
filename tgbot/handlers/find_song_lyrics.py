@@ -6,7 +6,6 @@ from aiogram import types, Dispatcher
 from aiogram.types import ContentType
 import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
-from ytmusicapi import YTMusic
 
 from tgbot.misc.misc_funcs import run_cpu_bound
 from tgbot.misc.states import JammyMusicStates
@@ -24,12 +23,12 @@ def remove_pattern_from_string(text, pattern):
     return cleaned_text
 
 
-async def get_lyrics(message: types.Message, config: Config, state):
+async def get_lyrics(message: types.Message, config: Config, state, yt_music):
     await state.reset_state()
     msg_text = fmt.text(message.text)
     try:
         # TODO SYNC FUNC
-        tracks: list[dict] = YTMusic(auth="./oauth.json").search(query=msg_text, filter="songs", limit=1)
+        tracks: list[dict] = yt_music.search(query=msg_text, filter="songs", limit=1)
         if not tracks:
             song_title = msg_text
             song_artists = ""

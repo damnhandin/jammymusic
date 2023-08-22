@@ -4,7 +4,6 @@ from aiogram import types, Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 import aiogram.utils.markdown as fmt
 from shazamio.exceptions import FailedDecodeJson
-from ytmusicapi import YTMusic
 
 from tgbot.handlers.search_music import convert_search_results_to_reply_markup
 from tgbot.keyboards.callback_datas import video_callback
@@ -84,9 +83,8 @@ async def parse_all_related_tracks_to_inline_buttons(related_tracks) -> types.In
     return reply_markup
 
 
-async def find_all_youtube_songs_from_list(songs):
+async def find_all_youtube_songs_from_list(songs, yt_music):
     yt_songs = []
-    yt_music = YTMusic(auth="./oauth.json")
     for song in songs:
         try:
             search_query = f"{song.get('subtitle')} - {song.get('title')}"
@@ -98,20 +96,20 @@ async def find_all_youtube_songs_from_list(songs):
     return yt_songs
 
 
-async def shazam_recommendation_search(message: types.Message, state):
+async def shazam_recommendation_search(message: types.Message, state, yt_music):
     await state.reset_state()
     await message.answer("Ищу похожие песни для вас")
     # shazam = Shazam(language="ru", endpoint_country="RU")
     shazam = Shazam()
     try:
         # TODO SYNC FUNC
-        tracks = YTMusic(auth="./oauth.json").search(query=message.text, filter="songs", limit=1)
+        tracks = yt_music.search(query=message.text, filter="songs", limit=1)
         if not tracks:
             raise RelatedSongsWasNotFound
         related_tracks_shazam = await parse_all_related_tracks_to_list_from_yt_music(tracks, shazam)
         if not related_tracks_shazam:
             raise RelatedSongsWasNotFound
-        related_tracks_yt_music = await find_all_youtube_songs_from_list(related_tracks_shazam)
+        related_tracks_yt_music = await find_all_youtube_songs_from_list(related_tracks_shazam, yt_music)
         if not related_tracks_yt_music:
             raise RelatedSongsWasNotFound
         reply_markup = await run_cpu_bound(convert_yt_songs_to_enumerated_inline_buttons, related_tracks_yt_music)
