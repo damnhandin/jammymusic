@@ -82,8 +82,8 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=20)
         await asyncio.sleep(timer_delay)
 
 
-def register_all_middlewares(playlist_paginator, dp, config, db, yt_music):
-    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db, yt_music=yt_music))
+def register_all_middlewares(playlist_paginator, dp, config, db):
+    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
 
@@ -128,8 +128,7 @@ async def main():
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
-    yt_music = YTMusic(auth="./oauth.json")
-    register_all_middlewares(playlist_paginator, dp, config, db, yt_music)
+    register_all_middlewares(playlist_paginator, dp, config, db)
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)
