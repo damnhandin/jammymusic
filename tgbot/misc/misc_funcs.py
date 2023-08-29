@@ -69,10 +69,9 @@ def convert_search_results_to_reply_markup(search_results):
     return reply_markup
 
 
-def filter_songs_without_correct_duration(video_searcher, searched_music=None):
+def filter_songs_without_correct_duration(video_searcher, searched_music=None, songs_limit=5):
     if searched_music is None:
         searched_music = list()
-    songs_limit = 3
     while len(searched_music) < songs_limit:
         result = video_searcher.result().get("result")
         if not result:
@@ -81,6 +80,11 @@ def filter_songs_without_correct_duration(video_searcher, searched_music=None):
             if song["duration"] != "LIVE" and song["duration"] is not None \
                     and ("hours" not in song["accessibility"]["duration"] and
                          "hour" not in song["accessibility"]["duration"]):
+                print(song["duration"])
+                song_duration = song["duration"].split(":")
+                if len(song_duration) == 2:
+                    if int(song_duration[0]) > 51:
+                        continue
                 searched_music.append(song)
             if len(searched_music) >= songs_limit:
                 return searched_music
