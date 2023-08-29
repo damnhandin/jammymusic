@@ -6,7 +6,6 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
-from ytmusicapi import YTMusic
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter

@@ -20,14 +20,13 @@ async def shazam_start_func(message: types.Message, state):
     await message.answer("Отправь мне голосовое сообщение, а я постараюсь узнать трек")
 
 
-async def shazam_get_voice_message(message: types.Message, yt_music):
+async def shazam_get_voice_message(message: types.Message):
     shazam = Shazam()
     voice_file = io.BytesIO()
     await message.voice.download(destination_file=voice_file)
     audio_segment = await run_blocking_io(AudioSegment.from_file, voice_file, "ogg")
     data = await shazam.recognize_song(audio_segment)
     song = data.get("track")
-    print(song)
     if not song:
         await message.answer("Я не смог распознать песню")
         return
@@ -41,7 +40,6 @@ async def shazam_get_voice_message(message: types.Message, yt_music):
 
     video_searcher = VideosSearch(text, 1, 'ru-RU', 'RU')
     search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
-    print(search_results)  #  Need to test
     if not search_results:
         return
     video_id = search_results[0]["id"]

@@ -8,7 +8,7 @@ import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
 from youtubesearchpython import VideosSearch
 
-from tgbot.misc.misc_funcs import run_cpu_bound, filter_songs_without_correct_duration
+from tgbot.misc.misc_funcs import run_cpu_bound, filter_songs_without_correct_duration, run_blocking_io
 from tgbot.misc.states import JammyMusicStates
 from tgbot.config import Config
 import lyricsgenius
@@ -29,18 +29,15 @@ async def get_lyrics(message: types.Message, config: Config, state):
     msg_text = fmt.text(message.text)
     try:
         # TODO SYNC FUNC
-        tracks_json = VideosSearch(msg_text, 1, 'ru-RU', 'RU')
+        tracks_json = await run_blocking_io(VideosSearch, msg_text, 1, 'ru-RU', 'RU')
         tracks = tracks_json.result()
-        print(tracks)
         #  tracks: list[dict] = yt_music.search(query=msg_text, filter="songs", limit=1)
         if not tracks:
             song_title = msg_text
             song_artists = ""
         else:
             track = tracks["result"][0]
-            print(track)
             song_title = fmt.text(track["title"])
-            print(song_title)
             #  song_artists = fmt.text(", ".join([artist.get("name") for artist in track.get("artists")]))
         lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
         result: Song = lyrics_genius.search_song(song_title, get_full_info=False)  # работает
