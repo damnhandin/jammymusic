@@ -8,7 +8,7 @@ import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
 from youtubesearchpython import VideosSearch
 
-from tgbot.misc.misc_funcs import run_cpu_bound, filter_songs_without_correct_duration, run_blocking_io
+from tgbot.misc.misc_funcs import run_cpu_bound, run_blocking_io
 from tgbot.misc.states import JammyMusicStates
 from tgbot.config import Config
 import lyricsgenius

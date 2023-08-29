@@ -64,12 +64,13 @@ def convert_search_results_to_reply_markup(search_results):
                 song_title = f"{song_artists} - {res['title']}"
             else:
                 song_title = res["title"]
+        print(song_title, video_id)
         reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
                                               callback_data=video_callback.new(video_id=video_id)))
     return reply_markup
 
 
-def filter_songs_without_correct_duration(video_searcher, searched_music=None, songs_limit=5):
+def filter_songs_without_correct_duration(video_searcher, searched_music=None, songs_limit=8):
     if searched_music is None:
         searched_music = list()
     while len(searched_music) < songs_limit:
@@ -80,7 +81,6 @@ def filter_songs_without_correct_duration(video_searcher, searched_music=None, s
             if song["duration"] != "LIVE" and song["duration"] is not None \
                     and ("hours" not in song["accessibility"]["duration"] and
                          "hour" not in song["accessibility"]["duration"]):
-                print(song["duration"])
                 song_duration = song["duration"].split(":")
                 if len(song_duration) == 2:
                     if int(song_duration[0]) > 51:

@@ -7,7 +7,7 @@ from pydub import AudioSegment
 from shazamio import Shazam
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
-from youtubesearchpython import ResultMode, Video, VideosSearch
+from youtubesearchpython import VideosSearch
 
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.exceptions import FileIsTooLarge
@@ -38,7 +38,7 @@ async def shazam_get_voice_message(message: types.Message):
         return
     await message.answer(f"Это {fmt.hcode(text)}")
 
-    video_searcher = VideosSearch(text, 1, 'ru-RU', 'RU')
+    video_searcher = await run_blocking_io(VideosSearch, text, 1, 'ru-RU', 'RU')
     search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
     if not search_results:
         return

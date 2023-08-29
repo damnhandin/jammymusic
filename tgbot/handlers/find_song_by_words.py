@@ -55,7 +55,7 @@ async def get_text_to_find_song(message: types.Message, config: Config, state):
     try:
         first_song = songs[0]
 
-        video_searcher = VideosSearch(first_song["result"]["full_title"], 1, 'ru-RU', 'RU')
+        video_searcher = await run_blocking_io(VideosSearch, first_song["result"]["full_title"], 1, 'ru-RU', 'RU')
         search_results = await run_blocking_io(filter_songs_without_correct_duration, video_searcher)
     except (IndexError, ValueError):
         return
