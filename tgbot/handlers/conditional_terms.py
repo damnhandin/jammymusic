@@ -20,7 +20,9 @@ async def accept_conditional_terms(cq: types.CallbackQuery, db: Database):
             await cq.message.answer("Пользовательское соглашение было принято. Теперь ты можешь пользоваться ботом. "
                                     "Кстати, лови подарок! Мы дарим тебе 14 дней премиум подписки!",
                                     reply_markup=thanks_to_devs_keyboard)
-
+        await cq.message.answer(
+            "Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
+            reply_markup=start_keyboard)
 
 def register_conditional_terms_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(accept_conditional_terms, action_callback.filter(
