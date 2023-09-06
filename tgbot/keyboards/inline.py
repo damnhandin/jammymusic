@@ -9,7 +9,7 @@ confirm_start_keyboard = InlineKeyboardMarkup(inline_keyboard=[
                           callback_data=action_callback.new(cur_action="cancel_to_start_menu"))],
 ])
 accept_terms_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Принять лиц. соглашение",
+            [InlineKeyboardButton(text="Принять польз. соглашение 👍",
                                   callback_data=action_callback.new(cur_action="accept_conditional_terms"))]
         ])
 
