@@ -113,7 +113,7 @@ async def shazam_recommendation_search(message: types.Message, state):
         similar_tracks.append(related_track['subtitle'] + " - " + related_track['title'])
 
     if similar_tracks:
-        response = "Похожие треки:\n" + "\n".join([f'<pre>{track}</pre>' for track in similar_tracks])
+        response = "Похожие треки:\n" + "\n".join([f'{fmt.hcode(track)}' for track in similar_tracks])
         response += "\nБольше музыки на @jammy_music_bot"
         await message.answer(response)
     else:
