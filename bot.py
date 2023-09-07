@@ -10,6 +10,7 @@ from aiogram.types import ParseMode
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_terms_filter import CheckUserFilter
+from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin_handlers
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
@@ -89,6 +90,7 @@ def register_all_middlewares(playlist_paginator, dp, config, db):
 
 def register_all_filters(dp):
     dp.filters_factory.bind(AdminFilter)
+    dp.filters_factory.bind(MarketerFilter)
     dp.filters_factory.bind(CheckUserFilter)
 
 

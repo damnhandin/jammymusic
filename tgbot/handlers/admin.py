@@ -5,6 +5,7 @@ from aiogram.types import Message, ContentType
 import aiogram.utils.markdown as fmt
 
 from tgbot.filters.admin import AdminFilter
+from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import spam_sending_keyboard, update_sending_keyboard, spam_sending_approve_keyboard, \
     update_sending_approve_keyboard
@@ -161,6 +162,8 @@ def register_admin_handlers(dp: Dispatcher):
     dp.register_message_handler(get_my_id,
                                 commands=["get_my_id"], state="*")
     dp.register_message_handler(get_stats, AdminFilter(is_admin=True),
+                                commands=["get_stats"], state="*")
+    dp.register_message_handler(get_stats, MarketerFilter(is_marketer=True),
                                 commands=["get_stats"], state="*")
     dp.register_message_handler(get_commands, AdminFilter(is_admin=True),
                                 commands=["get_commands"], state="*")

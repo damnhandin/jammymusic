@@ -16,6 +16,7 @@ class TgBot:
     token: str
     genius_token: str
     admin_ids: list[int]
+    marketer_ids: list[int]
     use_redis: bool
     payment_token: str
 
@@ -41,6 +42,7 @@ def load_config(path: str = None):
         tg_bot=TgBot(
             token=env.str("BOT_TOKEN"),
             admin_ids=list(map(int, env.list("ADMINS"))),
+            marketer_ids=list(map(int, env.list("MARKETERS"))),
             use_redis=env.bool("USE_REDIS"),
             genius_token=env.str("GENIUS_TOKEN"),
             payment_token=env.str("PAYMENT_TOKEN")
