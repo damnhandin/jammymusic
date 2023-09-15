@@ -49,6 +49,14 @@ async def convert_album_to_media_group(album: [types.Message], media_group=None)
     return media_group
 
 
+async def write_tg_ids_to_bytes_io(users_ids):
+    file = io.BytesIO()
+    for user_id in users_ids:
+        file.write(bytes(f"{user_id['telegram_id']}\n", "utf-8"))
+    file.seek(0)
+    return file
+
+
 def convert_search_results_to_reply_markup(search_results):
     reply_markup = InlineKeyboardMarkup()
     for res in search_results:
