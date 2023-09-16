@@ -7,10 +7,12 @@ from pydub import AudioSegment
 from shazamio import Shazam
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
+from youtubesearchpython import VideosSearch
 
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.exceptions import FileIsTooLarge
-from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io
+from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io, run_cpu_bound, \
+    filter_songs_without_correct_duration
 
 
 async def shazam_start_func(message: types.Message, state):
@@ -18,7 +20,7 @@ async def shazam_start_func(message: types.Message, state):
     await message.answer("Отправь мне голосовое сообщение, а я постараюсь узнать трек")
 
 
-async def shazam_get_voice_message(message: types.Message, yt_music):
+async def shazam_get_voice_message(message: types.Message):
     shazam = Shazam()
     voice_file = io.BytesIO()
     await message.voice.download(destination_file=voice_file)
@@ -36,10 +38,11 @@ async def shazam_get_voice_message(message: types.Message, yt_music):
         return
     await message.answer(f"Это {fmt.hcode(text)}")
 
-    search_results = (await run_blocking_io(yt_music.search, text, "songs", None, 1))
+    video_searcher = await run_blocking_io(VideosSearch, text, 1, 'ru-RU', 'RU')
+    search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
     if not search_results:
         return
-    video_id = search_results[0].get("videoId")
+    video_id = search_results[0]["id"]
     if not video_id:
         return
     yt_link = f"https://music.youtube.com/watch?v={video_id}"
@@ -52,9 +55,7 @@ async def shazam_get_voice_message(message: types.Message, yt_music):
         return
     try:
         audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
-    except AgeRestrictedError:
-        return
-    except FileIsTooLarge:
+    except (AgeRestrictedError, FileIsTooLarge):
         return
     await message.answer_audio(InputFile(audio_file), title=audio_stream.title,
                                performer=yt_video.author if yt_video.author else None,

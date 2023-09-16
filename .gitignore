@@ -71,5 +71,6 @@ ffplay.exe
 # misc
 bot.conf
 jammyvenv
-log_file_err.log
+logfile_err.log
 logfile.log
+oauth.json

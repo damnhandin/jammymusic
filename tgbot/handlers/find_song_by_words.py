@@ -2,10 +2,12 @@ from aiogram import types, Dispatcher
 import lyricsgenius
 
 import aiogram.utils.markdown as fmt
+from youtubesearchpython import VideosSearch
+
 from tgbot.config import Config
 from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.exceptions import FileIsTooLarge
-from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io
+from tgbot.misc.misc_funcs import get_audio_file_from_yt_video, run_blocking_io, filter_songs_without_correct_duration
 from tgbot.misc.states import JammyMusicStates
 
 from pytube import YouTube
@@ -31,7 +33,7 @@ async def format_songs_title_to_message_text(data):
     return msg_text
 
 
-async def get_text_to_find_song(message: types.Message, config: Config, state, yt_music):
+async def get_text_to_find_song(message: types.Message, config: Config, state):
     await state.reset_state()
     lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
     msg_text = fmt.text(message.text)
@@ -52,13 +54,14 @@ async def get_text_to_find_song(message: types.Message, config: Config, state, y
 
     try:
         first_song = songs[0]
-        search_results = (
-            await run_blocking_io(yt_music.search, first_song["result"]["full_title"], "songs", None, 1))[0]
+
+        video_searcher = await run_blocking_io(VideosSearch, first_song["result"]["full_title"], 1, 'ru-RU', 'RU')
+        search_results = await run_blocking_io(filter_songs_without_correct_duration, video_searcher)
     except (IndexError, ValueError):
         return
     if not search_results:
         return
-    video_id = search_results.get("videoId")
+    video_id = search_results[0]["id"]
     if not video_id:
         return
     yt_link = f"https://music.youtube.com/watch?v={video_id}"
@@ -71,9 +74,7 @@ async def get_text_to_find_song(message: types.Message, config: Config, state, y
         return
     try:
         audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
-    except AgeRestrictedError:
-        return
-    except FileIsTooLarge:
+    except (AgeRestrictedError, FileIsTooLarge):
         return
     await message.answer_audio(InputFile(audio_file), title=audio_stream.title,
                                performer=yt_video.author if yt_video.author else None,

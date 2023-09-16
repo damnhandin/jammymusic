@@ -1,14 +1,16 @@
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import MediaGroupFilter
-from aiogram.types import Message, ContentType
+from aiogram.types import Message, ContentType, InputMediaDocument, InputFile
 import aiogram.utils.markdown as fmt
 
 from tgbot.filters.admin import AdminFilter
+from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import spam_sending_keyboard, update_sending_keyboard, spam_sending_approve_keyboard, \
     update_sending_approve_keyboard
-from tgbot.misc.misc_funcs import convert_album_to_media_group, choose_content_and_func_for_sending
+from tgbot.misc.misc_funcs import convert_album_to_media_group, choose_content_and_func_for_sending, run_cpu_bound, \
+    write_tg_ids_to_bytes_io
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.db_utils import Database
 
@@ -154,13 +156,22 @@ async def spam_approved(cq: types.CallbackQuery, state: FSMContext, db: Database
 #     users = await db.select_all_users()
 #     await admin_sending_func(message.send_copy, users)
 
+async def get_ids_text_file(msg: types.Message, db: Database):
+    users_ids = await db.select_all_users_ids()
+    file_with_ids = await write_tg_ids_to_bytes_io(users_ids)
+    await msg.answer_document(InputFile(file_with_ids, filename="ids.txt"))
+
 
 def register_admin_handlers(dp: Dispatcher):
     # All commands must be above other handlers
     # Все команды должны быть выше остальных хендлеров, что в случае ошибки, можно было использоваться другую команду
     dp.register_message_handler(get_my_id,
                                 commands=["get_my_id"], state="*")
+    dp.register_message_handler(get_ids_text_file, AdminFilter(is_admin=True),
+                                commands=["get_ids_file"], state="*")
     dp.register_message_handler(get_stats, AdminFilter(is_admin=True),
+                                commands=["get_stats"], state="*")
+    dp.register_message_handler(get_stats, MarketerFilter(is_marketer=True),
                                 commands=["get_stats"], state="*")
     dp.register_message_handler(get_commands, AdminFilter(is_admin=True),
                                 commands=["get_commands"], state="*")

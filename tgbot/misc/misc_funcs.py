@@ -49,6 +49,14 @@ async def convert_album_to_media_group(album: [types.Message], media_group=None)
     return media_group
 
 
+async def write_tg_ids_to_bytes_io(users_ids):
+    file = io.BytesIO()
+    for user_id in users_ids:
+        file.write(bytes(f"{user_id['telegram_id']}\n", "utf-8"))
+    file.seek(0)
+    return file
+
+
 def convert_search_results_to_reply_markup(search_results):
     reply_markup = InlineKeyboardMarkup()
     for res in search_results:
@@ -64,15 +72,15 @@ def convert_search_results_to_reply_markup(search_results):
                 song_title = f"{song_artists} - {res['title']}"
             else:
                 song_title = res["title"]
+        print(song_title, video_id)
         reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
                                               callback_data=video_callback.new(video_id=video_id)))
     return reply_markup
 
 
-def filter_songs_without_correct_duration(video_searcher, searched_music=None):
+def filter_songs_without_correct_duration(video_searcher, searched_music=None, songs_limit=8):
     if searched_music is None:
         searched_music = list()
-    songs_limit = 3
     while len(searched_music) < songs_limit:
         result = video_searcher.result().get("result")
         if not result:
@@ -81,6 +89,10 @@ def filter_songs_without_correct_duration(video_searcher, searched_music=None):
             if song["duration"] != "LIVE" and song["duration"] is not None \
                     and ("hours" not in song["accessibility"]["duration"] and
                          "hour" not in song["accessibility"]["duration"]):
+                song_duration = song["duration"].split(":")
+                if len(song_duration) == 2:
+                    if int(song_duration[0]) > 51:
+                        continue
                 searched_music.append(song)
             if len(searched_music) >= songs_limit:
                 return searched_music

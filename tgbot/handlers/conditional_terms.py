@@ -24,7 +24,6 @@ async def accept_conditional_terms(cq: types.CallbackQuery, db: Database):
             "Отправь мне название любой песни, либо ссылку на видео YouTube и я тебе отправлю аудио.",
             reply_markup=start_keyboard)
 
-
 def register_conditional_terms_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(accept_conditional_terms, action_callback.filter(
         cur_action="accept_conditional_terms"))

@@ -6,11 +6,11 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
-from ytmusicapi import YTMusic
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_terms_filter import CheckUserFilter
+from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin_handlers
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
@@ -82,14 +82,15 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=20)
         await asyncio.sleep(timer_delay)
 
 
-def register_all_middlewares(playlist_paginator, dp, config, db, yt_music):
-    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db, yt_music=yt_music))
+def register_all_middlewares(playlist_paginator, dp, config, db):
+    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
 
 
 def register_all_filters(dp):
     dp.filters_factory.bind(AdminFilter)
+    dp.filters_factory.bind(MarketerFilter)
     dp.filters_factory.bind(CheckUserFilter)
 
 
@@ -128,8 +129,7 @@ async def main():
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
-    yt_music = YTMusic(auth="./oauth.json")
-    register_all_middlewares(playlist_paginator, dp, config, db, yt_music)
+    register_all_middlewares(playlist_paginator, dp, config, db)
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)

@@ -10,10 +10,10 @@ from tgbot.keyboards.inline import music_msg_keyboard
 from tgbot.misc.exceptions import FileIsTooLarge
 
 from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter_songs_without_correct_duration, \
-    get_audio_file_from_yt_video, run_blocking_io, run_cpu_bound
+    get_audio_file_from_yt_video, run_cpu_bound, run_blocking_io
 
 
-async def search_music_func(mes: types.Message, yt_music):
+async def search_music_func(mes: types.Message):
     msg_text = fmt.text(mes.text)
     try:
         video = Video.get(msg_text, mode=ResultMode.dict, get_upload_date=True)
@@ -43,9 +43,8 @@ async def search_music_func(mes: types.Message, yt_music):
                                reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
         return
     except Exception:
-        video_searcher = VideosSearch(msg_text, 5, 'ru-RU', 'RU')
-        search_results = (await run_blocking_io(yt_music.search, msg_text, "songs", None, 3))[:6]
-        search_results += await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
+        video_searcher = await run_blocking_io(VideosSearch, msg_text, 8, 'ru-RU', 'RU')
+        search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher)
         if not search_results:
             await mes.answer("Никаких совпадений по запросу.")
             return

@@ -6,8 +6,9 @@ from aiogram import types, Dispatcher
 from aiogram.types import ContentType
 import aiogram.utils.markdown as fmt
 from lyricsgenius.song import Song
+from youtubesearchpython import VideosSearch
 
-from tgbot.misc.misc_funcs import run_cpu_bound
+from tgbot.misc.misc_funcs import run_cpu_bound, run_blocking_io
 from tgbot.misc.states import JammyMusicStates
 from tgbot.config import Config
 import lyricsgenius
@@ -23,21 +24,23 @@ def remove_pattern_from_string(text, pattern):
     return cleaned_text
 
 
-async def get_lyrics(message: types.Message, config: Config, state, yt_music):
+async def get_lyrics(message: types.Message, config: Config, state):
     await state.reset_state()
     msg_text = fmt.text(message.text)
     try:
         # TODO SYNC FUNC
-        tracks: list[dict] = yt_music.search(query=msg_text, filter="songs", limit=1)
+        tracks_json = await run_blocking_io(VideosSearch, msg_text, 1, 'ru-RU', 'RU')
+        tracks = tracks_json.result()
+        #  tracks: list[dict] = yt_music.search(query=msg_text, filter="songs", limit=1)
         if not tracks:
             song_title = msg_text
             song_artists = ""
         else:
-            track = tracks[0]
+            track = tracks["result"][0]
             song_title = fmt.text(track["title"])
-            song_artists = fmt.text(", ".join([artist.get("name") for artist in track.get("artists")]))
+            #  song_artists = fmt.text(", ".join([artist.get("name") for artist in track.get("artists")]))
         lyrics_genius = lyricsgenius.Genius(config.tg_bot.genius_token)
-        result: Song = lyrics_genius.search_song(title=song_title, artist=song_artists, get_full_info=False)
+        result: Song = lyrics_genius.search_song(song_title, get_full_info=False)  # работает
         if not result:
             song_title = msg_text
             song_artists = ""
@@ -71,7 +74,7 @@ async def get_lyrics(message: types.Message, config: Config, state, yt_music):
 async def get_unknown_content_to_find_lyrics(message: types.Message):
     await message.answer("Похоже, что вы хотели найти текст песни, но мы получили от вас неизвестный формат файла, "
                          "пожалуйста, убедитесь в том, что вы действительно отправили только текст.")
-                         
+
 
 def register_find_lyrics(dp: Dispatcher):
     dp.register_message_handler(get_lyrics, content_types=ContentType.TEXT,
