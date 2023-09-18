@@ -9,11 +9,12 @@ from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import spam_sending_keyboard, update_sending_keyboard, spam_sending_approve_keyboard, \
     update_sending_approve_keyboard
+from tgbot.middlewares.throttling import ThrottlingMiddleware
 from tgbot.misc.misc_funcs import convert_album_to_media_group, choose_content_and_func_for_sending, run_cpu_bound, \
     write_tg_ids_to_bytes_io
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.db_utils import Database
-
+import datetime
 
 async def check_admin_status(message: Message):
     await message.reply("Hello, admin!")
@@ -27,8 +28,22 @@ async def get_stats(message, db: Database):
     count_users = await db.count_users()
     count_free_users = await db.count_users_without_sub()
     count_sub_users = await db.count_users_with_sub()
+
+    today = datetime.date.today()
+    one_week_ago = today - datetime.timedelta(days=7)
+    attendance = ThrottlingMiddleware.attendance_data
+    today_users = []
+    week_users = []
+    for key, user_date in attendance.items():
+        if user_date == today:
+            today_users.append(key)
+        elif user_date >= one_week_ago:
+            week_users.append(key)
+    new_users = [key for key, user_date in attendance.items() if user_date == today and key not in week_users]
+    week_users.extend(new_users)
     await message.answer(f"{fmt.hbold('Статистика бота:')}\nКоличество:\nВсе пользователи: {count_users}\n"
-                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
+                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n"
+                         f"Пользователей сегодня: {len(today_users)}\nПользователей за 7 дней: {len(week_users)}\n")
 
 
 async def get_commands(message):

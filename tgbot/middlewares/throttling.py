@@ -1,9 +1,12 @@
 import asyncio
 
 from aiogram import types, Dispatcher
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.dispatcher.handler import current_handler, CancelHandler
 from aiogram.dispatcher.middlewares import BaseMiddleware
 from aiogram.utils.exceptions import Throttled
+
+import datetime
 
 
 def rate_limit(limit: int, key=None):
@@ -28,6 +31,7 @@ class ThrottlingMiddleware(BaseMiddleware):
     """
     Simple middleware
     """
+    attendance_data: dict = {}
 
     def __init__(self, limit=1, key_prefix='antiflood_'):
         self.rate_limit = limit
@@ -42,9 +46,16 @@ class ThrottlingMiddleware(BaseMiddleware):
         :param data:
         :return:
         """
+
+        key = f'{message.from_user.id}'
+        current_date = datetime.date.today()
+        if key not in self.attendance_data:
+            self.attendance_data[key] = current_date
+        if self.attendance_data[key] != current_date:
+            self.attendance_data[key] = current_date
+
         # Get current handler
         handler = current_handler.get()
-
         # Get dispatcher from context
         dispatcher = Dispatcher.get_current()
         # If handler was configured, get rate limit and key from handler
