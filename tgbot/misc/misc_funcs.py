@@ -16,8 +16,9 @@ from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIs
 from tgbot.models.db_utils import Database
 
 
-async def count_users_activity(attendance_data: dict):
+async def count_users_activity(attendance_data):
     today = datetime_date.today()
+    print(attendance_data)
     one_week_ago = today - timedelta(days=7)
     count_today_activity = 0
     count_week_activity = 0

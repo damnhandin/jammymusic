@@ -89,6 +89,7 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=25)
             await regular_functions(db)
         except Exception as exc:
             logging.info(f"Error in regular function {exc}")
+            await asyncio.sleep(timer_delay)
             continue
         await asyncio.sleep(timer_delay)
 
@@ -101,6 +102,7 @@ async def setup_long_regular_function(db: Database, start_timeout=45, long_timer
             await long_timer_reg_funcs(db)
         except Exception as exc:
             logging.info(f"Error in long regular function {exc}")
+            await asyncio.sleep(long_timer_delay)
             continue
         await asyncio.sleep(long_timer_delay)
 
