@@ -16,15 +16,16 @@ from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIs
 from tgbot.models.db_utils import Database
 
 
-async def count_users_activity(attendance_data):
+async def count_users_activity(attendance_data: list):
     today = datetime_date.today()
     one_week_ago = today - timedelta(days=7)
     count_today_activity = 0
     count_week_activity = 0
-    for date in attendance_data.values():
-        if date == today:
+    for user_attendance_data in attendance_data:
+        last_activity_date = user_attendance_data["last_activity_date"]
+        if last_activity_date == today:
             count_today_activity += 1
-        if date >= one_week_ago:
+        if last_activity_date >= one_week_ago:
             count_week_activity += 1
     return count_today_activity, count_week_activity
 

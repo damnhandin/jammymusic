@@ -94,7 +94,7 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=25)
         await asyncio.sleep(timer_delay)
 
 
-async def setup_long_regular_function(db: Database, start_timeout=45, long_timer_delay=3600):
+async def setup_long_regular_function(db: Database, start_timeout=45, long_timer_delay=1800):
     await asyncio.sleep(start_timeout)
     while True:
         logging.info("Start long regular functions")
