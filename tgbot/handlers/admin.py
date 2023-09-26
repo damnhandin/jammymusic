@@ -25,7 +25,7 @@ async def get_my_id(message):
 
 
 async def get_stats(message, db: Database):
-    attendance_data = await db.select_users_activity()
+    attendance_data = await db.select_users_activity() or {}
     count_today_activity, count_week_activity = await count_users_activity(attendance_data)
     count_users = await db.count_users()
     count_free_users = await db.count_users_without_sub()
