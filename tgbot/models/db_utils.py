@@ -170,6 +170,15 @@ class Database:
         """
         await self.execute(sql, execute=True)
 
+    async def create_table_users_activity(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS users_activity (
+        telegram_id BIGINT UNIQUE REFERENCES users(telegram_id) ON DELETE CASCADE,
+        last_activity_date DATE NOT NULL
+        );
+        """
+        await self.execute(sql, execute=True)
+
     @staticmethod
     def format_args(sql, parameters: dict):
         sql += " AND ".join([
@@ -287,6 +296,15 @@ class Database:
         INSERT INTO premium_free_trials (telegram_id, free_trial_date_start) VALUES ($1, $2)
         """
         await self.execute(sql, telegram_id, current_date, execute=True)
+
+    async def add_or_update_users_activity_db(self, attendance_data: dict):
+        attendance_data = attendance_data.copy()
+        sql = """
+        INSERT INTO users_activity (telegram_id, last_activity_date) VALUES ($1, $2)
+        ON CONFLICT (telegram_id) DO UPDATE SET last_activity_date=$2
+        """
+        for telegram_id, last_activity_date in attendance_data.items():
+            await self.execute(sql, telegram_id, last_activity_date, execute=True)
 
     async def check_user_sub_then_unsub_if_not_valid(self, telegram_id, current_date):
         sql = """

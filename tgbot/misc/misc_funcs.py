@@ -1,8 +1,8 @@
 import concurrent.futures
 import asyncio
-import datetime
 import io
-from datetime import datetime
+from datetime import timedelta, datetime
+from datetime import date as datetime_date
 from typing import Union
 
 import aiogram
@@ -14,6 +14,19 @@ from pytube import Stream, YouTube
 from tgbot.keyboards.callback_datas import video_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIsTooLarge
 from tgbot.models.db_utils import Database
+
+
+async def count_users_activity(attendance_data: dict):
+    today = datetime_date.today()
+    one_week_ago = today - timedelta(days=7)
+    count_today_activity = 0
+    count_week_activity = 0
+    for date in attendance_data.values():
+        if date == today:
+            count_today_activity += 1
+        if date >= one_week_ago:
+            count_week_activity += 1
+    return count_today_activity, count_week_activity
 
 
 async def admin_sending_func(send_func, receivers, media_content=None):
@@ -72,7 +85,6 @@ def convert_search_results_to_reply_markup(search_results):
                 song_title = f"{song_artists} - {res['title']}"
             else:
                 song_title = res["title"]
-        print(song_title, video_id)
         reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
                                               callback_data=video_callback.new(video_id=video_id)))
     return reply_markup

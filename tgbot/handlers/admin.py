@@ -9,8 +9,9 @@ from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.keyboards.callback_datas import action_callback
 from tgbot.keyboards.inline import spam_sending_keyboard, update_sending_keyboard, spam_sending_approve_keyboard, \
     update_sending_approve_keyboard
+from tgbot.middlewares.active_users_middleware import ActiveUsers
 from tgbot.misc.misc_funcs import convert_album_to_media_group, choose_content_and_func_for_sending, run_cpu_bound, \
-    write_tg_ids_to_bytes_io
+    write_tg_ids_to_bytes_io, count_users_activity
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.db_utils import Database
 
@@ -24,11 +25,14 @@ async def get_my_id(message):
 
 
 async def get_stats(message, db: Database):
+    attendance_data = ActiveUsers.attendance_data
+    count_today_activity, count_week_activity = await count_users_activity(attendance_data)
     count_users = await db.count_users()
     count_free_users = await db.count_users_without_sub()
     count_sub_users = await db.count_users_with_sub()
     await message.answer(f"{fmt.hbold('Статистика бота:')}\nКоличество:\nВсе пользователи: {count_users}\n"
-                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
+                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n"
+                         f"Активность за день: {count_today_activity}\nАктивность за неделю: {count_week_activity}")
 
 
 async def get_commands(message):

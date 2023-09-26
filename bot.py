@@ -24,6 +24,7 @@ from tgbot.handlers.similar_songs_search import register_similar_songs_search
 from tgbot.handlers.text_button_registration import text_button_registration
 from tgbot.handlers.thanks_to_devs import register_thanks_to_devs_handlers
 from tgbot.handlers.user import register_user
+from tgbot.middlewares.active_users_middleware import ActiveUsers
 from tgbot.middlewares.album import AlbumMiddleware
 from tgbot.middlewares.environment import EnvironmentMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
@@ -44,6 +45,7 @@ async def init_db(db: Database):
     await db.create_table_thanks_to_devs()
     await db.create_table_premium_free_trials()
     await db.create_table_transactions_history()
+    await db.create_table_users_activity()
 
     # await db.init_sub_statuses()
 
@@ -65,15 +67,24 @@ async def delete_all_not_valid_subs(db):
         await db.activate_user_sub(user["telegram_id"], current_date)
 
 
+async def move_users_activity_to_db(db: Database):
+    attendance_data = ActiveUsers.attendance_data
+    await db.add_or_update_users_activity_db(attendance_data)
+
+
 async def regular_functions(db: Database):
     await delete_all_not_valid_subs(db)
     await db.activate_unsubs_with_subs_in_queue()
 
 
-async def setup_regular_function(db: Database, start_timeout=45, timer_delay=20):
+async def long_timer_reg_funcs(db):
+    await move_users_activity_to_db(db)
+
+
+async def setup_regular_function(db: Database, start_timeout=45, timer_delay=25):
     await asyncio.sleep(start_timeout)
     while True:
-        logging.info("Start regular function")
+        logging.info("Start regular functions")
         try:
             await regular_functions(db)
         except Exception as exc:
@@ -82,10 +93,23 @@ async def setup_regular_function(db: Database, start_timeout=45, timer_delay=20)
         await asyncio.sleep(timer_delay)
 
 
+async def setup_long_regular_function(db: Database, start_timeout=45, long_timer_delay=3600):
+    await asyncio.sleep(start_timeout)
+    while True:
+        logging.info("Start long regular functions")
+        try:
+            await long_timer_reg_funcs(db)
+        except Exception as exc:
+            logging.info(f"Error in long regular function {exc}")
+            continue
+        await asyncio.sleep(long_timer_delay)
+
+
 def register_all_middlewares(playlist_paginator, dp, config, db):
     dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
+    dp.setup_middleware(ActiveUsers())
 
 
 def register_all_filters(dp):
@@ -134,6 +158,7 @@ async def main():
     register_all_handlers(dp, db)
     await setup_database(db)
     asyncio.create_task(setup_regular_function(db))
+    asyncio.create_task(setup_long_regular_function(db))
     # start
     try:
         await dp.start_polling()
