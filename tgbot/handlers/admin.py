@@ -24,7 +24,7 @@ async def get_my_id(message):
     await message.answer(f"{fmt.hbold('Ваш телеграм id:')}\n{message.from_user.id}")
 
 
-async def get_stats(message, db: Database):
+async def get_full_stats(message, db: Database):
     attendance_data = await db.select_users_activity() or {}
     count_today_activity, count_week_activity = await count_users_activity(attendance_data)
     count_users = await db.count_users()
@@ -33,6 +33,14 @@ async def get_stats(message, db: Database):
     await message.answer(f"{fmt.hbold('Статистика бота:')}\nКоличество:\nВсе пользователи: {count_users}\n"
                          f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n"
                          f"Активность за день: {count_today_activity}\nАктивность за неделю: {count_week_activity}")
+
+
+async def get_stats(message, db: Database):
+    count_users = await db.count_users()
+    count_free_users = await db.count_users_without_sub()
+    count_sub_users = await db.count_users_with_sub()
+    await message.answer(f"{fmt.hbold('Статистика бота:')}\nКоличество:\nВсе пользователи: {count_users}\n"
+                         f"Бесплатные пользователи: {count_free_users}\nПользователи с подпиской: {count_sub_users}\n")
 
 
 async def get_commands(message):
@@ -177,6 +185,8 @@ def register_admin_handlers(dp: Dispatcher):
                                 commands=["get_stats"], state="*")
     dp.register_message_handler(get_stats, MarketerFilter(is_marketer=True),
                                 commands=["get_stats"], state="*")
+    dp.register_message_handler(get_full_stats, AdminFilter(is_admin=True),
+                                commands=["get_full_stats"], state="*")
     dp.register_message_handler(get_commands, AdminFilter(is_admin=True),
                                 commands=["get_commands"], state="*")
     dp.register_message_handler(check_admin_status,
