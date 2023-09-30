@@ -11,7 +11,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 from pytube import Stream, YouTube
 
-from tgbot.keyboards.callback_datas import video_callback
+from tgbot.keyboards.callback_datas import video_callback, ya_audio_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIsTooLarge
 from tgbot.models.db_utils import Database
 
@@ -75,6 +75,18 @@ def convert_search_results_to_reply_markup(search_results):
         print(song_title, video_id)
         reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
                                               callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
+def convert_music_api_search_res_to_reply_markup(tracks):
+    reply_markup = InlineKeyboardMarkup()
+    for audio_id, track in enumerate(tracks):
+        artists = ', '.join(artist.name for artist in track.artists)
+        song_title = f'{track.title} - {artists}'
+        cur_emoji = "🔝🎵"
+        print(song_title, audio_id)
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_title}",
+                                              callback_data=ya_audio_callback.new(audio_id=(audio_id-1))))
     return reply_markup
 
 
@@ -164,11 +176,13 @@ def check_func_speed(func):
     """
     Декоратор для измерения скорости выполнения функции
     """
+
     async def wrapper(*args, **kwargs):
         print("Начинаем измерять скорость работы функции")
         start_time = datetime.now()
         await func(*args)
         print(f"Время выполнения: {datetime.now() - start_time}")
+
     return wrapper
 
 
@@ -222,7 +236,7 @@ async def format_invoice(chat_id, callback_data, provider_token):
 
 
 async def get_audio_file_from_yt_video(yt_video: YouTube) -> (io.BytesIO, Stream):
-    streams = await run_blocking_io(yt_video.__getattribute__,  "streams")
+    streams = await run_blocking_io(yt_video.__getattribute__, "streams")
     audio_stream: Stream = await run_blocking_io(streams.get_audio_only)
     if audio_stream.filesize > 50000000:
         raise FileIsTooLarge
