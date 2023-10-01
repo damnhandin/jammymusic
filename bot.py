@@ -11,9 +11,11 @@ from yandex_music import ClientAsync
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_terms_filter import CheckUserFilter
+from tgbot.filters.group_filter import GroupFilter
 from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin_handlers
+from tgbot.handlers.chats_and_channels.search_song_in_chat import register_search_music_in_group
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
 from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
@@ -120,6 +122,7 @@ def register_all_filters(dp):
     dp.filters_factory.bind(AdminFilter)
     dp.filters_factory.bind(MarketerFilter)
     dp.filters_factory.bind(CheckUserFilter)
+    dp.filters_factory.bind(GroupFilter)
 
 
 def register_all_handlers(dp, db):
@@ -129,6 +132,7 @@ def register_all_handlers(dp, db):
     register_conditional_terms_handlers(dp)
     register_check_user_handlers(dp, db)
     # Самое главное чтобы в верхних хендлерах не сбрасывалось состояние
+    register_search_music_in_group(dp)
     register_payment(dp)
     text_button_registration(dp)
     register_user(dp)

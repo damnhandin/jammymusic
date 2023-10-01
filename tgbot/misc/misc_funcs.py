@@ -30,10 +30,19 @@ async def count_users_activity(attendance_data: list):
             count_week_activity += 1
     return count_today_activity, count_week_activity
 
+async def format_song_artists_from_ya_music(ya_music):
+    artists = ya_music["artists"]
+    song_artists = ", ".join([artist["name"] for artist in artists])
+    return song_artists
 
-async def get_yt_video_by_link(link):
-    video = Video.get(link, mode=ResultMode.dict, get_upload_date=True)
-    video_id = video.get("id")
+async def format_song_title_from_ya_music(ya_music) -> str:
+    artists = ya_music["artists"]
+    song_artists = ", ".join([artist for artist in artists])
+    song_title = f'{song_artists} - {ya_music["title"]}'
+    return song_title
+
+
+async def get_yt_video_by_video_id(video_id):
     if not video_id:
         raise Exception
     try:
@@ -43,6 +52,12 @@ async def get_yt_video_by_link(link):
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
         yt_video = YouTube(yt_link, use_oauth=True)
     return yt_video
+
+
+async def get_yt_video_by_link(link):
+    video = Video.get(link, mode=ResultMode.dict, get_upload_date=True)
+    video_id = video.get("id")
+    return await get_yt_video_by_video_id(video_id)
 
 
 async def admin_sending_func(send_func, receivers, media_content=None):

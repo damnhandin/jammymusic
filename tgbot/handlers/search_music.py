@@ -87,5 +87,6 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
     ####################################################################
     #client = await ClientAsync(f'{config.tg_bot.y_token}').init() dont work
 
+
 def register_search_music(dp: Dispatcher):
     dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)
