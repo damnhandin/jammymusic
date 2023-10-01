@@ -10,6 +10,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 from pytube import Stream, YouTube
+from youtubesearchpython import Video, ResultMode
 
 from tgbot.keyboards.callback_datas import video_callback, ya_audio_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIsTooLarge
@@ -28,6 +29,20 @@ async def count_users_activity(attendance_data: list):
         if last_activity_date >= one_week_ago:
             count_week_activity += 1
     return count_today_activity, count_week_activity
+
+
+async def get_yt_video_by_link(link):
+    video = Video.get(link, mode=ResultMode.dict, get_upload_date=True)
+    video_id = video.get("id")
+    if not video_id:
+        raise Exception
+    try:
+        yt_link = f"https://music.youtube.com/watch?v={video_id}"
+        yt_video = YouTube(yt_link, use_oauth=True)
+    except:
+        yt_link = f"https://www.youtube.com/watch?v={video_id}"
+        yt_video = YouTube(yt_link, use_oauth=True)
+    return yt_video
 
 
 async def admin_sending_func(send_func, receivers, media_content=None):
@@ -71,8 +86,31 @@ async def write_tg_ids_to_bytes_io(users_ids):
     return file
 
 
+def convert_search_divided_results_to_reply_markup(ya_search_results, yt_search_results):
+    reply_markup = InlineKeyboardMarkup()
+    cur_emoji = "🔝🎶"  # 🎶🎵
+    for track in ya_search_results:
+        try:
+            song_id = track["id"]
+            artists = track["artists"]
+            song_artists_text = ", ".join([artist["name"] for artist in artists])
+            reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_artists_text} - {track['title']}",
+                                                  callback_data=ya_audio_callback.new(audio_id=song_id)))
+        except Exception as exc:
+            print(exc)
+            continue
+    cur_emoji = "🎵"
+    for track in yt_search_results:
+        video_id = track.get("id")
+        song_title = track.get("title")
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_title}",
+                                              callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
 def convert_search_results_to_reply_markup(search_results):
     reply_markup = InlineKeyboardMarkup()
+    print(search_results)
     for res in search_results:
         if res.get("id"):
             video_id = res.get("id")

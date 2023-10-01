@@ -19,7 +19,7 @@ class TgBot:
     marketer_ids: list[int]
     use_redis: bool
     payment_token: str
-    y_token: str
+    ya_token: str
 
 
 @dataclass
@@ -47,7 +47,7 @@ def load_config(path: str = None):
             use_redis=env.bool("USE_REDIS"),
             genius_token=env.str("GENIUS_TOKEN"),
             payment_token=env.str("PAYMENT_TOKEN"),
-            y_token=env.str("Y_TOKEN")
+            ya_token=env.str("YA_TOKEN")
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),

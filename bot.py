@@ -108,8 +108,9 @@ async def setup_long_regular_function(db: Database, start_timeout=45, long_timer
         await asyncio.sleep(long_timer_delay)
 
 
-def register_all_middlewares(playlist_paginator, dp, config, db):
-    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
+def register_all_middlewares(playlist_paginator, dp, config, db, ya_music):
+    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db,
+                                              ya_music=ya_music))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
     dp.setup_middleware(ActiveUsers())
@@ -152,10 +153,11 @@ async def main():
     dp = Dispatcher(bot, storage=storage)
     db = Database()
     playlist_paginator = PlaylistPaginator(dp=dp)
+    ya_music = await ClientAsync(config.tg_bot.ya_token).init()
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
-    register_all_middlewares(playlist_paginator, dp, config, db)
+    register_all_middlewares(playlist_paginator, dp, config, db, ya_music)
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)
