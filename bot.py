@@ -8,7 +8,6 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
 from yandex_music import ClientAsync
-yandex_music.exceptions.TimedOutError
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
@@ -18,6 +17,7 @@ from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin_handlers
 from tgbot.handlers.chats_and_channels.search_song_in_chat import register_search_music_in_group
+from tgbot.handlers.chats_and_channels.start_in_chat import register_default_commands_in_group
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
 from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
@@ -134,6 +134,7 @@ def register_all_handlers(dp, db):
     register_conditional_terms_handlers(dp)
     register_check_user_handlers(dp, db)
     # Самое главное чтобы в верхних хендлерах не сбрасывалось состояние
+    register_default_commands_in_group(dp)
     register_search_music_in_group(dp)
     register_payment(dp)
     text_button_registration(dp)
