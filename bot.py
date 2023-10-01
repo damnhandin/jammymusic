@@ -2,11 +2,13 @@ import asyncio
 import logging
 from datetime import datetime
 
+import yandex_music.exceptions
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
 from yandex_music import ClientAsync
+yandex_music.exceptions.TimedOutError
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter

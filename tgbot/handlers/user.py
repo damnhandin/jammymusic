@@ -11,6 +11,7 @@ from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
 from aiogram.utils.markdown import hcode
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
+from yandex_music.exceptions import TimedOutError
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
@@ -62,6 +63,7 @@ async def my_playlists(message: types.Message, playlist_pg, state, db: Database)
     except Exception:
         pass
 
+
 async def user_choose_audio_cq(cq, callback_data, ya_music: yandex_music.ClientAsync):
     audio_id = callback_data["audio_id"]
     if not audio_id:
@@ -69,10 +71,17 @@ async def user_choose_audio_cq(cq, callback_data, ya_music: yandex_music.ClientA
         return
     try:
         track = (await ya_music.tracks(audio_id))[0]
-        audio_file = BytesIO(await track.download_bytes_async())
+        while True:
+            try:
+                audio_file = BytesIO(await track.download_bytes_async())
+            except TimedOutError:
+                continue
+            else:
+                break
     except Exception as exc:
         await cq.message.answer('Произошла ошибка!')
         raise exc
+
     try:
         await cq.answer("Ищу информацию по данному запросу!")
     except InvalidQueryID:
