@@ -59,6 +59,7 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
     except:
         ya_search_results = []
 
+
     if ya_search_results and yt_search_results:
         ya_search_results = ya_search_results[:songs_limit]
     elif not ya_search_results and yt_search_results:
@@ -67,7 +68,7 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
         # TODO slice do async
         ya_search_results = ya_search_results[:songs_limit]
 
-    if not yt_search_results and ya_search_results:
+    if not yt_search_results and not ya_search_results:
         await mes.answer("Никаких совпадений по запросу.")
         return
     reply_markup = await run_cpu_bound(convert_search_divided_results_to_reply_markup,
