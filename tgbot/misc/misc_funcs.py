@@ -72,7 +72,8 @@ async def admin_sending_func(send_func, receivers, media_content=None):
                 await send_func(chat_id=receiver_telegram_id)
             else:
                 await send_func(chat_id=receiver_telegram_id, media=media_content)
-        except aiogram.exceptions.BotBlocked:
+        except (aiogram.exceptions.BotBlocked, aiogram.exceptions.UserDeactivated,
+                aiogram.exceptions.InvalidUserId):
             continue
         except aiogram.exceptions.ToMuchMessages:
             await asyncio.sleep(30)
