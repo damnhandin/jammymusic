@@ -2,6 +2,7 @@ from aiogram import Dispatcher
 from aiogram.dispatcher.filters import Text
 
 from tgbot.handlers.add_own_song import add_own_song_func
+from tgbot.handlers.charts import charts_start_func
 from tgbot.handlers.find_song import find_song_func
 from tgbot.handlers.find_song_by_words import find_song_by_words
 from tgbot.handlers.find_song_lyrics import find_lyrics
@@ -15,6 +16,8 @@ from tgbot.handlers.user import my_playlists
 def text_button_registration(dp: Dispatcher):
     dp.register_message_handler(my_playlists, Text("🎧 Мои плейлисты"), state="*")
     dp.register_message_handler(find_song_func, Text("🔍 Найти музыку"),
+                                state="*")
+    dp.register_message_handler(charts_start_func, Text("🎼🔍 Чарты"),
                                 state="*")
     dp.register_message_handler(find_song_by_words, Text("🎵 Найти песню по словам"),
                                 state="*")

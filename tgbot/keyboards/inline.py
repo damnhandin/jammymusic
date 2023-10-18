@@ -82,3 +82,12 @@ types_of_premium_keyboard = InlineKeyboardMarkup(inline_keyboard=[
                           callback_data=action_callback.new(cur_action="back_to_sub_menu"))]
 ])
 
+select_country_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton("🇷🇺 Russia",
+                              callback_data=action_callback.new(cur_action="Russian Federation"))],
+        [InlineKeyboardButton("🇪🇸 Spain",
+                              callback_data=action_callback.new(cur_action="Spain"))],
+        [InlineKeyboardButton("🇺🇸 USA",
+                              callback_data=action_callback.new(cur_action="United States"))]
+    ])
+

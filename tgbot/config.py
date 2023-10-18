@@ -20,6 +20,10 @@ class TgBot:
     use_redis: bool
     payment_token: str
     ya_token: str
+    lastfm_api_key: str
+    lastfm_api_secret: str
+    lastfm_username: str
+    lastfm_password_hash: str
 
 
 @dataclass
@@ -47,7 +51,11 @@ def load_config(path: str = None):
             use_redis=env.bool("USE_REDIS"),
             genius_token=env.str("GENIUS_TOKEN"),
             payment_token=env.str("PAYMENT_TOKEN"),
-            ya_token=env.str("YA_TOKEN")
+            ya_token=env.str("YA_TOKEN"),
+            lastfm_api_key=env.str("LASTFM_API_KEY"),
+            lastfm_api_secret=env.str("LASTFM_API_SECRET"),
+            lastfm_username=env.str("LASTFM_username"),
+            lastfm_password_hash=env.str("LASTFM_password_hash"),
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),
