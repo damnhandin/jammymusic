@@ -8,6 +8,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode
 from yandex_music import ClientAsync
+
+from tgbot.handlers.charts import register_chart_handlers
+
 yandex_music.exceptions.TimedOutError
 
 from tgbot.config import load_config
@@ -145,6 +148,7 @@ def register_all_handlers(dp, db):
     register_add_own_music(dp)
     register_search_music(dp)
     register_thanks_to_devs_handlers(dp)
+    register_chart_handlers(dp)
 
 
 async def main():
