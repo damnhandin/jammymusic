@@ -17,6 +17,7 @@ from tgbot.misc.misc_funcs import convert_search_results_to_reply_markup, filter
 
 async def get_audios_from_video_searcher(search_pattern, videos_limit):
     video_searcher = await run_blocking_io(VideosSearch, search_pattern, videos_limit, 'ru-RU', 'RU')
+    # search_results возвращает пустой список, не знаю почему
     search_results = await run_cpu_bound(filter_songs_without_correct_duration, video_searcher, None, videos_limit)
     return search_results
 
@@ -24,6 +25,7 @@ async def get_audios_from_video_searcher(search_pattern, videos_limit):
 async def search_music_func(mes: types.Message, config: Config, ya_music):
     msg_text = fmt.text(mes.text)
     try:
+        print("\n 112")
         yt_video = await get_yt_video_by_link(mes.text)
         if not yt_video:
             raise Exception
@@ -47,11 +49,6 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
     yt_search_results = await get_audios_from_video_searcher(mes.text, songs_limit)
     if not yt_search_results:
         songs_limit = 8
-    # if yt_search_results:
-    #     reply_markup = await run_cpu_bound(convert_search_results_to_reply_markup, yt_search_results)
-    # else:
-    #     songs_limit = 8
-    #     reply_markup = InlineKeyboardMarkup()
     ya_music: yandex_music.ClientAsync
     try:
         ya_search_results = (await ya_music.search(text=mes.text))
@@ -79,13 +76,6 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
         await mes.answer(f'{fmt.hbold("Результаты по вашему запросу:")}', reply_markup=reply_markup,
                          disable_web_page_preview=False)
 
-    # answer = f'{fmt.hbold("Результаты по запросу")}: {fmt.hcode(msg_text)}'
-    # try:
-    #     await mes.answer(answer, reply_markup=reply_markup, disable_web_page_preview=False)
-    # except MessageIsTooLong:
-    #     await mes.answer(f'{fmt.hbold("Результаты по вашему запросу:")}', reply_markup=reply_markup)
-    ####################################################################
-    #client = await ClientAsync(f'{config.tg_bot.y_token}').init() dont work
 
 
 def register_search_music(dp: Dispatcher):
