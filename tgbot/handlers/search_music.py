@@ -77,6 +77,5 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
                          disable_web_page_preview=False)
 
 
-
 def register_search_music(dp: Dispatcher):
     dp.register_message_handler(search_music_func, content_types=ContentType.TEXT)

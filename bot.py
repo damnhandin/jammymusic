@@ -55,6 +55,8 @@ async def init_db(db: Database):
     await db.create_table_transactions_history()
     await db.create_table_users_activity()
 
+    await db.create_table_tracks()
+
     # await db.init_sub_statuses()
 
 
