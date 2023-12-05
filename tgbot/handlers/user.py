@@ -70,6 +70,10 @@ async def user_choose_audio_cq(cq, callback_data, ya_music: yandex_music.ClientA
         await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
         return
     try:
+        try:
+            file_id = select_track(audio_id)
+        except Exception as e:
+            pass
         track = (await ya_music.tracks(audio_id))[0]
         while True:
             try:
@@ -86,7 +90,7 @@ async def user_choose_audio_cq(cq, callback_data, ya_music: yandex_music.ClientA
         await cq.answer("Ищу информацию по данному запросу!")
     except InvalidQueryID:
         await cq.message.answer("Ищу информацию по данному запросу!")
-    await cq.message.answer_audio(InputFile(audio_file), title=track["title"],
+    audio_mes = await cq.message.answer_audio(InputFile(audio_file), title=track["title"],
                                   performer=await format_song_artists_from_ya_music(track),
                                   reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
 

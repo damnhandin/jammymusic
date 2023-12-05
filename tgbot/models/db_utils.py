@@ -115,18 +115,20 @@ class Database:
         CREATE TABLE IF NOT EXISTS tracks (
             track_id SERIAL PRIMARY KEY,
             file_id VARCHAR(100) NOT NULL,
+            performer VARCHAR(100),
+            title VARCHAR(100)
         );
         """
         await self.execute(sql, execute=True)
 
-    async def insert_table_tracks(self, track_id: int, file_id: str) -> None:
+    async def insert_table_tracks(self, track_id: int, file_id: str, performer: str, title: str) -> None:
         sql = """
-        INSERT INTO tracks (track_id, file_id) VALUES ($1, $2);
+        INSERT INTO tracks (track_id, file_id, performer, title) VALUES ($1, $2, $3, $4);
         """
-        await self.execute(sql, track_id, file_id, execute=True)
+        await self.execute(sql, track_id, file_id, performer, title, execute=True)
 
     async def select_track(self, track_id: int):
-        sql = "SELECT file_id FROM tracks WHERE track_id=$1;"
+        sql = "SELECT file_id, performer, title FROM tracks WHERE track_id=$1;"
         return await self.execute(sql, track_id, execute=True)
 
     async def create_table_track_playlist(self):
