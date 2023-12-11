@@ -1,6 +1,7 @@
 import concurrent.futures
 import asyncio
 import io
+import logging
 from datetime import timedelta, datetime
 from datetime import date as datetime_date
 from typing import Union
@@ -72,11 +73,12 @@ async def admin_sending_func(send_func, receivers, media_content=None):
                 await send_func(chat_id=receiver_telegram_id)
             else:
                 await send_func(chat_id=receiver_telegram_id, media=media_content)
-        except (aiogram.exceptions.BotBlocked, aiogram.exceptions.UserDeactivated,
-                aiogram.exceptions.InvalidUserId):
-            continue
+
         except aiogram.exceptions.ToMuchMessages:
             await asyncio.sleep(30)
+        except Exception as exc:
+            logging.info(f"Ошибка во время рассылки {exc}, {receiver}", exc_info=True)
+            continue
 
 
 async def convert_album_to_media_group(album: [types.Message], media_group=None):

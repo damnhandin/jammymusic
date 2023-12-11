@@ -6,7 +6,7 @@ import yandex_music.exceptions
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.types import ParseMode
+from aiogram.types import ParseMode, InlineKeyboardMarkup, WebAppInfo
 from yandex_music import ClientAsync
 
 from tgbot.config import load_config
