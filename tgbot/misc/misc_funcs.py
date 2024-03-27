@@ -115,7 +115,6 @@ def convert_search_divided_results_to_reply_markup(ya_search_results, yt_search_
             reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_artists_text} - {track['title']}",
                                                   callback_data=ya_audio_callback.new(audio_id=song_id)))
         except Exception as exc:
-            print(exc)
             continue
     cur_emoji = "🎵"
     for track in yt_search_results:
