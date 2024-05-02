@@ -1,5 +1,7 @@
 from datetime import datetime
+from io import BytesIO
 
+import yandex_music
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart, MediaGroupFilter
@@ -9,15 +11,16 @@ from aiogram.utils.exceptions import MessageNotModified, InvalidQueryID
 from aiogram.utils.markdown import hcode
 from pytube import YouTube
 from pytube.exceptions import AgeRestrictedError
+from yandex_music.exceptions import TimedOutError
 
 from tgbot.config import Config
 from tgbot.keyboards.callback_datas import action_callback, playlist_callback, video_callback, edit_playlist_callback, \
-    playlist_action, playlist_navg_callback
+    playlist_action, playlist_navg_callback, ya_audio_callback
 from tgbot.keyboards.inline import confirm_start_keyboard, music_msg_keyboard
 from tgbot.keyboards.reply import start_keyboard
 from tgbot.misc.exceptions import PlaylistNotFound, LimitTracksInPlaylist, WrongSongNumber, FileIsTooLarge
 from tgbot.misc.misc_funcs import delete_all_messages_from_data, catch_exception_if_playlist_is_not_available, \
-    get_audio_file_from_yt_video
+    get_audio_file_from_yt_video, format_song_artists_from_ya_music
 from tgbot.misc.states import JammyMusicStates
 from tgbot.models.classes.paginator import PlaylistPaginator
 from tgbot.models.db_utils import Database
@@ -61,6 +64,33 @@ async def my_playlists(message: types.Message, playlist_pg, state, db: Database)
         pass
 
 
+async def user_choose_audio_cq(cq, callback_data, ya_music: yandex_music.ClientAsync):
+    audio_id = callback_data["audio_id"]
+    if not audio_id:
+        await cq.answer('Произошла ошибка! Повторите поиск!', cache_time=1)
+        return
+    try:
+        track = (await ya_music.tracks(audio_id))[0]
+        while True:
+            try:
+                audio_file = BytesIO(await track.download_bytes_async())
+            except TimedOutError:
+                continue
+            else:
+                break
+    except Exception as exc:
+        await cq.message.answer('Произошла ошибка!')
+        raise exc
+
+    try:
+        await cq.answer("Ищу информацию по данному запросу!")
+    except InvalidQueryID:
+        await cq.message.answer("Ищу информацию по данному запросу!")
+    await cq.message.answer_audio(InputFile(audio_file), title=track["title"],
+                                  performer=await format_song_artists_from_ya_music(track),
+                                  reply_markup=music_msg_keyboard, caption='Больше музыки на @jammy_music_bot')
+
+
 async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
     video_id = callback_data["video_id"]
     if not video_id:
@@ -68,20 +98,16 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         return
     try:
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        try:
-            yt_video = YouTube(yt_link, use_oauth=True)
-        except Exception:
-            yt_link = f"https://music.youtube.com/watch?v={video_id}"
-            yt_video = YouTube(yt_link, use_oauth=True)
+        yt_video = YouTube(yt_link, use_oauth=True)
         if not yt_video:
             raise Exception
     except Exception as exc:
         await cq.message.answer('Произошла ошибка!')
         raise exc
+
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
-
         audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
@@ -709,6 +735,7 @@ def register_user(dp: Dispatcher):
     dp.register_callback_query_handler(delete_this_cq_message,
                                        action_callback.filter(cur_action="cancel_to_start_menu"),
                                        state="*")
+    dp.register_callback_query_handler(user_choose_audio_cq, ya_audio_callback.filter())
     dp.register_callback_query_handler(user_choose_video_cq, video_callback.filter())
     dp.register_callback_query_handler(add_to_playlist, action_callback.filter(cur_action="add_to_playlist"))
     dp.register_callback_query_handler(confirm_creation_playlist,

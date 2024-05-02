@@ -2,17 +2,22 @@ import asyncio
 import logging
 from datetime import datetime
 
+import yandex_music.exceptions
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.types import ParseMode
+from aiogram.types import ParseMode, InlineKeyboardMarkup, WebAppInfo
+from yandex_music import ClientAsync
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_terms_filter import CheckUserFilter
+from tgbot.filters.group_filter import GroupFilter
 from tgbot.filters.marketer_filter import MarketerFilter
 from tgbot.handlers.add_own_song import register_add_own_music
 from tgbot.handlers.admin import register_admin_handlers
+from tgbot.handlers.chats_and_channels.search_song_in_chat import register_search_music_in_group
+from tgbot.handlers.chats_and_channels.start_in_chat import register_default_commands_in_group
 from tgbot.handlers.check_user_handlers import register_check_user_handlers
 from tgbot.handlers.conditional_terms import register_conditional_terms_handlers
 from tgbot.handlers.find_song_lyrics import register_find_lyrics
@@ -107,8 +112,9 @@ async def setup_long_regular_function(db: Database, start_timeout=45, long_timer
         await asyncio.sleep(long_timer_delay)
 
 
-def register_all_middlewares(playlist_paginator, dp, config, db):
-    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db))
+def register_all_middlewares(playlist_paginator, dp, config, db, ya_music):
+    dp.setup_middleware(EnvironmentMiddleware(playlist_pg=playlist_paginator, config=config, db=db,
+                                              ya_music=ya_music))
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
     dp.setup_middleware(ActiveUsers())
@@ -118,6 +124,7 @@ def register_all_filters(dp):
     dp.filters_factory.bind(AdminFilter)
     dp.filters_factory.bind(MarketerFilter)
     dp.filters_factory.bind(CheckUserFilter)
+    dp.filters_factory.bind(GroupFilter)
 
 
 def register_all_handlers(dp, db):
@@ -127,6 +134,8 @@ def register_all_handlers(dp, db):
     register_conditional_terms_handlers(dp)
     register_check_user_handlers(dp, db)
     # Самое главное чтобы в верхних хендлерах не сбрасывалось состояние
+    register_default_commands_in_group(dp)
+    register_search_music_in_group(dp)
     register_payment(dp)
     text_button_registration(dp)
     register_user(dp)
@@ -146,16 +155,16 @@ async def main():
     )
     logger.info("Starting bot")
     config = load_config(".env")
-
     storage = RedisStorage2() if config.tg_bot.use_redis else MemoryStorage()
     bot = Bot(token=config.tg_bot.token, parse_mode=ParseMode.HTML)
     dp = Dispatcher(bot, storage=storage)
     db = Database()
     playlist_paginator = PlaylistPaginator(dp=dp)
+    ya_music = await ClientAsync(config.tg_bot.ya_token).init()
     bot['config'] = config
     bot['db'] = db
     bot['playlist_pg'] = playlist_paginator
-    register_all_middlewares(playlist_paginator, dp, config, db)
+    register_all_middlewares(playlist_paginator, dp, config, db, ya_music)
     register_all_filters(dp)
     register_all_handlers(dp, db)
     await setup_database(db)

@@ -1,8 +1,10 @@
 import concurrent.futures
 import asyncio
 import io
+import logging
 from datetime import timedelta, datetime
 from datetime import date as datetime_date
+from functools import partial
 from typing import Union
 
 import aiogram
@@ -10,8 +12,10 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 from pytube import Stream, YouTube
+from pytube.exceptions import AgeRestrictedError
+from youtubesearchpython import Video, ResultMode
 
-from tgbot.keyboards.callback_datas import video_callback
+from tgbot.keyboards.callback_datas import video_callback, ya_audio_callback
 from tgbot.misc.exceptions import PlaylistNotAvailable, PlaylistNotFound, FileIsTooLarge
 from tgbot.models.db_utils import Database
 
@@ -29,6 +33,31 @@ async def count_users_activity(attendance_data: list):
             count_week_activity += 1
     return count_today_activity, count_week_activity
 
+async def format_song_artists_from_ya_music(ya_music):
+    artists = ya_music["artists"]
+    song_artists = ", ".join([artist["name"] for artist in artists])
+    return song_artists
+
+async def format_song_title_from_ya_music(ya_music) -> str:
+    artists = ya_music["artists"]
+    song_artists = ", ".join([artist for artist in artists])
+    song_title = f'{song_artists} - {ya_music["title"]}'
+    return song_title
+
+
+async def get_yt_video_by_video_id(video_id):
+    if not video_id:
+        raise Exception
+    yt_link = f"https://www.youtube.com/watch?v={video_id}"
+    yt_video = YouTube(yt_link, use_oauth=True)
+    return yt_video
+
+
+async def get_yt_video_by_link(link):
+    video = Video.get(link, mode=ResultMode.dict, get_upload_date=True)
+    video_id = video.get("id")
+    return await get_yt_video_by_video_id(video_id)
+
 
 async def admin_sending_func(send_func, receivers, media_content=None):
     count = 0
@@ -42,10 +71,12 @@ async def admin_sending_func(send_func, receivers, media_content=None):
                 await send_func(chat_id=receiver_telegram_id)
             else:
                 await send_func(chat_id=receiver_telegram_id, media=media_content)
-        except aiogram.exceptions.BotBlocked:
-            continue
+
         except aiogram.exceptions.ToMuchMessages:
             await asyncio.sleep(30)
+        except Exception as exc:
+            logging.info(f"Ошибка во время рассылки {exc}, {receiver}", exc_info=True)
+            continue
 
 
 async def convert_album_to_media_group(album: [types.Message], media_group=None):
@@ -71,8 +102,30 @@ async def write_tg_ids_to_bytes_io(users_ids):
     return file
 
 
+def convert_search_divided_results_to_reply_markup(ya_search_results, yt_search_results):
+    reply_markup = InlineKeyboardMarkup()
+    cur_emoji = "🔝🎶"  # 🎶🎵
+    for track in ya_search_results:
+        try:
+            song_id = track["id"]
+            artists = track["artists"]
+            song_artists_text = ", ".join([artist["name"] for artist in artists])
+            reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_artists_text} - {track['title']}",
+                                                  callback_data=ya_audio_callback.new(audio_id=song_id)))
+        except Exception as exc:
+            continue
+    cur_emoji = "🎵"
+    for track in yt_search_results:
+        video_id = track.get("id")
+        song_title = track.get("title")
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_title}",
+                                              callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
 def convert_search_results_to_reply_markup(search_results):
     reply_markup = InlineKeyboardMarkup()
+    print(search_results)
     for res in search_results:
         if res.get("id"):
             video_id = res.get("id")
@@ -88,6 +141,18 @@ def convert_search_results_to_reply_markup(search_results):
                 song_title = res["title"]
         reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {res['duration']} {song_title}",
                                               callback_data=video_callback.new(video_id=video_id)))
+    return reply_markup
+
+
+def convert_music_api_search_res_to_reply_markup(tracks):
+    reply_markup = InlineKeyboardMarkup()
+    for audio_id, track in enumerate(tracks):
+        artists = ', '.join(artist.name for artist in track.artists)
+        song_title = f'{track.title} - {artists}'
+        cur_emoji = "🔝🎵"
+        print(song_title, audio_id)
+        reply_markup.row(InlineKeyboardButton(f"{cur_emoji} {song_title}",
+                                              callback_data=ya_audio_callback.new(audio_id=(audio_id-1))))
     return reply_markup
 
 
@@ -177,11 +242,13 @@ def check_func_speed(func):
     """
     Декоратор для измерения скорости выполнения функции
     """
+
     async def wrapper(*args, **kwargs):
         print("Начинаем измерять скорость работы функции")
         start_time = datetime.now()
         await func(*args)
         print(f"Время выполнения: {datetime.now() - start_time}")
+
     return wrapper
 
 
@@ -234,15 +301,45 @@ async def format_invoice(chat_id, callback_data, provider_token):
     return invoice_parameters
 
 
+async def get_min_stream(result: YouTube, mime_type="audio/mp4", progressive=True) -> Union[Stream, None]:
+    # async def get_min_stream_audio(result: YouTube, mime_type="audio/mp4", progressive=True):
+    # async def get_min_stream_video(result: YouTube):
+
+    if not result:
+        return None
+    if progressive:
+        func = partial(result.streams.filter, progressive=True)
+    else:
+        func = partial(result.streams.filter, mime_type=mime_type)
+    streams = await run_blocking_io(func)
+    min_stream_mb = 0
+    min_stream = None
+    for stream in streams:
+        if 50 >= stream.filesize_mb > min_stream_mb:
+            min_stream_mb = stream.filesize_mb
+            min_stream = stream
+    if not min_stream or min_stream_mb == 0:
+        logging.error(f"{min_stream=}", exc_info=True)
+        return None
+    return min_stream or None
+
+
 async def get_audio_file_from_yt_video(yt_video: YouTube) -> (io.BytesIO, Stream):
-    streams = await run_blocking_io(yt_video.__getattribute__,  "streams")
-    audio_stream: Stream = await run_blocking_io(streams.get_audio_only)
-    if audio_stream.filesize > 50000000:
-        raise FileIsTooLarge
+    if await run_blocking_io(yt_video.__getattribute__, "age_restricted"):
+        try:
+            yt_video = await run_blocking_io(yt_video.bypass_age_gate)
+        except AgeRestrictedError:
+            raise AgeRestrictedError
+
+    min_stream = await get_min_stream(yt_video, progressive=False)
+    if not min_stream:
+        return None, None
+    min_stream: Stream
     audio_file = io.BytesIO()
-    await run_blocking_io(audio_stream.stream_to_buffer, audio_file)
+    await run_blocking_io(min_stream.stream_to_buffer, audio_file)
+
     await run_blocking_io(audio_file.seek, 0)
-    return audio_file, audio_stream
+    return audio_file, min_stream
 
 
 async def run_cpu_bound(func, *args):

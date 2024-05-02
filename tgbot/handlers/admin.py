@@ -146,7 +146,7 @@ async def spam_approved(cq: types.CallbackQuery, state: FSMContext, db: Database
     await state.reset_state()
     users = await db.select_all_users_without_sub()
     try:
-        func = choose_content_and_func_for_sending(data, users, cq.bot)
+        func = await choose_content_and_func_for_sending(data, users, cq.bot)
         if func is not None:
             await func
         else:
@@ -195,6 +195,7 @@ def register_admin_handlers(dp: Dispatcher):
                                 AdminFilter(is_admin=True), commands=["update"], state="*")
     dp.register_message_handler(pre_handler_admin_start_sending_spam,
                                 AdminFilter(is_admin=True), commands=["spam"], state="*")
+
 # dp.register_callback_query_handler(send_update_default_message,
 #                                    AdminFilter(is_admin=True), commands=["update_sending"], state="*")
     # other handlers are below except handlers with commands
