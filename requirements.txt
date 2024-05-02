@@ -10,7 +10,7 @@ beautifulsoup4~=4.11.1
 pydub~=0.25.1
 ytmusicapi~=1.0.2
 shazamio~=0.4.0.1
-pytube~=15.0.0
+pytube==15.0.0
 asyncpg~=0.25.0
 yandex-music
 aiohttp

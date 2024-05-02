@@ -4,6 +4,7 @@ import io
 import logging
 from datetime import timedelta, datetime
 from datetime import date as datetime_date
+from functools import partial
 from typing import Union
 
 import aiogram
@@ -11,6 +12,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InputMedia, InlineKeyboardMarkup, InlineKeyboardButton
 from pytube import Stream, YouTube
+from pytube.exceptions import AgeRestrictedError
 from youtubesearchpython import Video, ResultMode
 
 from tgbot.keyboards.callback_datas import video_callback, ya_audio_callback
@@ -46,12 +48,8 @@ async def format_song_title_from_ya_music(ya_music) -> str:
 async def get_yt_video_by_video_id(video_id):
     if not video_id:
         raise Exception
-    try:
-        yt_link = f"https://music.youtube.com/watch?v={video_id}"
-        yt_video = YouTube(yt_link, use_oauth=True)
-    except:
-        yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        yt_video = YouTube(yt_link, use_oauth=True)
+    yt_link = f"https://www.youtube.com/watch?v={video_id}"
+    yt_video = YouTube(yt_link, use_oauth=True)
     return yt_video
 
 
@@ -303,15 +301,45 @@ async def format_invoice(chat_id, callback_data, provider_token):
     return invoice_parameters
 
 
+async def get_min_stream(result: YouTube, mime_type="audio/mp4", progressive=True) -> Union[Stream, None]:
+    # async def get_min_stream_audio(result: YouTube, mime_type="audio/mp4", progressive=True):
+    # async def get_min_stream_video(result: YouTube):
+
+    if not result:
+        return None
+    if progressive:
+        func = partial(result.streams.filter, progressive=True)
+    else:
+        func = partial(result.streams.filter, mime_type=mime_type)
+    streams = await run_blocking_io(func)
+    min_stream_mb = 0
+    min_stream = None
+    for stream in streams:
+        if 50 >= stream.filesize_mb > min_stream_mb:
+            min_stream_mb = stream.filesize_mb
+            min_stream = stream
+    if not min_stream or min_stream_mb == 0:
+        logging.error(f"{min_stream=}", exc_info=True)
+        return None
+    return min_stream or None
+
+
 async def get_audio_file_from_yt_video(yt_video: YouTube) -> (io.BytesIO, Stream):
-    streams = await run_blocking_io(yt_video.__getattribute__, "streams")
-    audio_stream: Stream = await run_blocking_io(streams.get_audio_only)
-    if audio_stream.filesize > 50000000:
-        raise FileIsTooLarge
+    if await run_blocking_io(yt_video.__getattribute__, "age_restricted"):
+        try:
+            yt_video = await run_blocking_io(yt_video.bypass_age_gate)
+        except AgeRestrictedError:
+            raise AgeRestrictedError
+
+    min_stream = await get_min_stream(yt_video, progressive=False)
+    if not min_stream:
+        return None, None
+    min_stream: Stream
     audio_file = io.BytesIO()
-    await run_blocking_io(audio_stream.stream_to_buffer, audio_file)
+    await run_blocking_io(min_stream.stream_to_buffer, audio_file)
+
     await run_blocking_io(audio_file.seek, 0)
-    return audio_file, audio_stream
+    return audio_file, min_stream
 
 
 async def run_cpu_bound(func, *args):

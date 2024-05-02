@@ -98,20 +98,16 @@ async def user_choose_video_cq(cq: types.CallbackQuery, callback_data):
         return
     try:
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        try:
-            yt_video = YouTube(yt_link, use_oauth=True)
-        except Exception:
-            yt_link = f"https://music.youtube.com/watch?v={video_id}"
-            yt_video = YouTube(yt_link, use_oauth=True)
+        yt_video = YouTube(yt_link, use_oauth=True)
         if not yt_video:
             raise Exception
     except Exception as exc:
         await cq.message.answer('Произошла ошибка!')
         raise exc
+
     # Здесь можно улучшить качество звука, если отсортировать по убыванию filesize
     # и выбрать самый большой, но в то же время подходящий файл
     try:
-
         audio_file, audio_stream = await get_audio_file_from_yt_video(yt_video)
     except AgeRestrictedError:
         await cq.message.answer("Данная музыка ограничена по возрасту")
