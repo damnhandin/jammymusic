@@ -47,10 +47,10 @@ async def shazam_get_voice_message(message: types.Message):
         return
     yt_link = f"https://music.youtube.com/watch?v={video_id}"
     try:
-        yt_video = YouTube(yt_link, use_oauth=True)
+        yt_video = YouTube(yt_link)
     except Exception:
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
-        yt_video = YouTube(yt_link, use_oauth=True)
+        yt_video = YouTube(yt_link)
     if not yt_video:
         return
     try:

@@ -59,7 +59,6 @@ async def search_music_func(mes: types.Message, config: Config, ya_music):
     except:
         ya_search_results = []
 
-
     if ya_search_results and yt_search_results:
         ya_search_results = ya_search_results[:songs_limit]
     elif not ya_search_results and yt_search_results:
